@@ -34,6 +34,7 @@ import com.kamarguinho.supertube.data.Favorites;
 import com.kamarguinho.supertube.data.Feed;
 import com.kamarguinho.supertube.data.History;
 import com.kamarguinho.supertube.data.Movies;
+import com.kamarguinho.supertube.data.Pagers;
 import com.kamarguinho.supertube.data.Trending;
 import com.kamarguinho.supertube.data.Subscriptions;
 import com.kamarguinho.supertube.util.Bg;
@@ -132,7 +133,12 @@ public class TvMainActivity extends AppCompatActivity {
     private RecyclerView listGrid;
     private final TvAdapters.VideoAdapter listAdapter = new TvAdapters.VideoAdapter(true);
     private final TvAdapters.ChannelAdapter channelAdapter = new TvAdapters.ChannelAdapter();
-    private List<StreamInfoItem> feedCache = null;
+    private String feedKey = null;
+    private TvAdapters.PagedList categoryPaged;
+    private TvAdapters.PagedList searchPaged;
+    private TvAdapters.PagedList listPaged;
+    private final java.util.Set<String> homeSeeds = new java.util.HashSet<>();
+    private int extraHomeRows = 0;
 
     private final ActivityResultLauncher<Intent> voiceLauncher =
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(),
@@ -367,6 +373,15 @@ public class TvMainActivity extends AppCompatActivity {
         homeList.setItemAnimator(null);
         rowsAdapter = new TvAdapters.RowsAdapter();
         homeList.setAdapter(rowsAdapter);
+        categoryPaged = new TvAdapters.PagedList(categoryGrid, null);
+        // Rolagem para baixo sem fim: na grade carrega mais vídeos; nas fileiras, mais fileiras
+        TvAdapters.endless(homeList, () -> {
+            if (homeList.getAdapter() == categoryGrid) {
+                categoryPaged.more();
+            } else {
+                addMoreHomeRow();
+            }
+        });
 
         final LinearLayout chipsBox = findViewById(R.id.chips);
         for (int i = 0; i < CATEGORIES.length; i++) {
@@ -398,24 +413,14 @@ public class TvMainActivity extends AppCompatActivity {
 
         homeList.setLayoutManager(new GridLayoutManager(this, GRID_COLUMNS));
         homeList.setAdapter(categoryGrid);
-        categoryGrid.set(new ArrayList<>());
         progress.setVisibility(View.VISIBLE);
-        final String query = CATEGORIES[index][1];
-        Bg.run(() -> searchVideos(query), new Bg.Callback<List<StreamInfoItem>>() {
-            @Override
-            public void onResult(final List<StreamInfoItem> result) {
-                if (token != homeToken) {
-                    return;
-                }
-                progress.setVisibility(View.GONE);
-                categoryGrid.set(result);
+        message.setVisibility(View.GONE);
+        categoryPaged.start(Pagers.forQuery(CATEGORIES[index][1]), (items, error) -> {
+            if (token != homeToken) {
+                return;
             }
-
-            @Override
-            public void onError(final Throwable error) {
-                if (token != homeToken) {
-                    return;
-                }
+            progress.setVisibility(View.GONE);
+            if (error != null) {
                 showError(error);
             }
         });
@@ -427,9 +432,8 @@ public class TvMainActivity extends AppCompatActivity {
 
         final List<Subscriptions.Channel> channels = new Subscriptions(this).all();
         if (!channels.isEmpty()) {
-            final TvAdapters.Row row = new TvAdapters.Row(getString(R.string.tv_new_from_subs));
-            rows.add(row);
-            Bg.run(() -> Feed.load(channels), rowCallback(row, 30));
+            rows.add(new TvAdapters.Row(getString(R.string.tv_new_from_subs),
+                    new Pagers.FeedPager(channels)));
         }
 
         final List<StreamInfoItem> favs = new Favorites(this).asItems();
@@ -441,27 +445,35 @@ public class TvMainActivity extends AppCompatActivity {
         }
 
         for (final String[] r : HOME_ROWS) {
-            final TvAdapters.Row row = new TvAdapters.Row(r[0]);
-            rows.add(row);
-            Bg.run(() -> searchVideos(r[1]), rowCallback(row, 40));
+            rows.add(new TvAdapters.Row(r[0], Pagers.forQuery(r[1])));
         }
         rowsAdapter.set(rows);
+        for (final TvAdapters.Row row : rows) {
+            rowsAdapter.loadMore(row);
+        }
     }
 
-    private Bg.Callback<List<StreamInfoItem>> rowCallback(final TvAdapters.Row row,
-                                                         final int max) {
-        return new Bg.Callback<List<StreamInfoItem>>() {
-            @Override
-            public void onResult(final List<StreamInfoItem> result) {
-                row.adapter.set(result.subList(0, Math.min(max, result.size())));
-                rowsAdapter.loaded(row);
+    /** Fileiras sem fim no "Tudo": cria "Mais como ..." a partir de vídeos já mostrados. */
+    private void addMoreHomeRow() {
+        final int n = rowsAdapter.size();
+        if (n == 0 || extraHomeRows >= 30 || rowsAdapter.get(n - 1).loading) {
+            return;
+        }
+        StreamInfoItem seed = null;
+        for (int r = 0; r < n && seed == null; r++) {
+            for (final StreamInfoItem item : rowsAdapter.get(r).adapter.items()) {
+                if (homeSeeds.add(item.getUrl())) {
+                    seed = item;
+                    break;
+                }
             }
-
-            @Override
-            public void onError(final Throwable error) {
-                rowsAdapter.loaded(row);
-            }
-        };
+        }
+        if (seed == null) {
+            return;
+        }
+        extraHomeRows++;
+        rowsAdapter.start(new TvAdapters.Row(getString(R.string.tv_more_like, seed.getName()),
+                new Pagers.RelatedPager(java.util.Collections.singletonList(seed))));
     }
 
     private List<StreamInfoItem> searchVideos(final String query) throws Exception {
@@ -482,6 +494,7 @@ public class TvMainActivity extends AppCompatActivity {
         final RecyclerView results = findViewById(R.id.search_results);
         results.setLayoutManager(new GridLayoutManager(this, 3));
         results.setAdapter(searchGrid);
+        searchPaged = new TvAdapters.PagedList(searchGrid, results);
 
         final RecyclerView suggestionList = findViewById(R.id.suggestions);
         suggestionList.setLayoutManager(new LinearLayoutManager(this));
@@ -564,28 +577,18 @@ public class TvMainActivity extends AppCompatActivity {
         lastSearch = query;
         hideKeyboard();
         final int token = ++searchToken;
-        searchGrid.set(new ArrayList<>());
         progress.setVisibility(View.VISIBLE);
         message.setVisibility(View.GONE);
-        Bg.run(() -> searchVideos(query), new Bg.Callback<List<StreamInfoItem>>() {
-            @Override
-            public void onResult(final List<StreamInfoItem> result) {
-                if (token != searchToken) {
-                    return;
-                }
-                progress.setVisibility(View.GONE);
-                searchGrid.set(result);
-                if (result.isEmpty()) {
-                    message.setText(R.string.no_results);
-                    message.setVisibility(View.VISIBLE);
-                }
+        searchPaged.start(new Pagers.SearchPager(query), (items, error) -> {
+            if (token != searchToken) {
+                return;
             }
-
-            @Override
-            public void onError(final Throwable error) {
-                if (token == searchToken) {
-                    showError(error);
-                }
+            progress.setVisibility(View.GONE);
+            if (error != null) {
+                showError(error);
+            } else if (items.isEmpty()) {
+                message.setText(R.string.no_results);
+                message.setVisibility(View.VISIBLE);
             }
         });
     }
@@ -615,6 +618,7 @@ public class TvMainActivity extends AppCompatActivity {
         listGrid = findViewById(R.id.list_grid);
         listGrid.setLayoutManager(new GridLayoutManager(this, GRID_COLUMNS));
         listGrid.setAdapter(listAdapter);
+        listPaged = new TvAdapters.PagedList(listAdapter, listGrid);
 
         listActions = findViewById(R.id.list_actions);
         historyPause = findViewById(R.id.history_pause);
@@ -656,7 +660,8 @@ public class TvMainActivity extends AppCompatActivity {
         listActions.setVisibility(View.VISIBLE);
         updatePauseLabel();
         final List<StreamInfoItem> items = History.asItems(this);
-        listAdapter.set(items);
+        feedKey = null;
+        listPaged.fixed(items);
         if (items.isEmpty()) {
             message.setText(R.string.history_empty);
             message.setVisibility(View.VISIBLE);
@@ -698,33 +703,29 @@ public class TvMainActivity extends AppCompatActivity {
         channelAdapter.set(channels);
         channelsList.setVisibility(channels.isEmpty() ? View.GONE : View.VISIBLE);
         if (channels.isEmpty()) {
-            listAdapter.set(new ArrayList<>());
+            feedKey = null;
+            listPaged.fixed(new ArrayList<>());
             message.setText(R.string.tv_no_subscriptions);
             message.setVisibility(View.VISIBLE);
             return;
         }
-        if (feedCache != null) {
-            listAdapter.set(feedCache);
+        final StringBuilder key = new StringBuilder();
+        for (final Subscriptions.Channel c : channels) {
+            key.append(c.url).append('|');
+        }
+        if (key.toString().equals(feedKey)) {
+            listAdapter.notifyDataSetChanged();
             return;
         }
-        listAdapter.set(new ArrayList<>());
+        feedKey = key.toString();
         progress.setVisibility(View.VISIBLE);
-        Bg.run(() -> Feed.load(channels), new Bg.Callback<List<StreamInfoItem>>() {
-            @Override
-            public void onResult(final List<StreamInfoItem> result) {
-                feedCache = result;
-                if (section != SECTION_SUBS) {
-                    return;
-                }
-                progress.setVisibility(View.GONE);
-                listAdapter.set(result);
+        listPaged.start(new Pagers.FeedPager(channels), (items, error) -> {
+            if (section != SECTION_SUBS) {
+                return;
             }
-
-            @Override
-            public void onError(final Throwable error) {
-                if (section == SECTION_SUBS) {
-                    showError(error);
-                }
+            progress.setVisibility(View.GONE);
+            if (error != null) {
+                showError(error);
             }
         });
     }

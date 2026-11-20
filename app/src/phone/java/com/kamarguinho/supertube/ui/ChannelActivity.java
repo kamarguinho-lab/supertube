@@ -71,15 +71,27 @@ public class ChannelActivity extends AppCompatActivity {
 
         subscribeButton.setOnClickListener(v -> toggleSubscription());
 
+        // Rolagem sem fim: perto do fim da página, carrega mais vídeos do canal
+        final androidx.core.widget.NestedScrollView scroll = findViewById(R.id.scroll);
+        scroll.setOnScrollChangeListener((androidx.core.widget.NestedScrollView.OnScrollChangeListener)
+                (v, x, y, oldX, oldY) -> {
+                    final View child = v.getChildAt(0);
+                    if (child != null && y + v.getHeight() >= child.getHeight() - 1500) {
+                        loadMoreVideos(adapter);
+                    }
+                });
+
         Bg.run(() -> {
             final ChannelInfo c = ChannelInfo.getInfo(NewPipe.getService(serviceId), url);
-            List<InfoItem> videos;
+            final com.kamarguinho.supertube.data.Pagers.ChannelPager p =
+                    new com.kamarguinho.supertube.data.Pagers.ChannelPager(c);
+            List<? extends InfoItem> videos;
             try {
-                videos = Feed.channelVideos(c);
+                videos = p.next();
             } catch (final Exception e) {
                 videos = java.util.Collections.emptyList();
             }
-            return new Object[]{c, videos};
+            return new Object[]{c, videos, p};
         }, new Bg.Callback<Object[]>() {
             @Override
             @SuppressWarnings("unchecked")
@@ -104,6 +116,7 @@ public class ChannelActivity extends AppCompatActivity {
                 updateButton();
                 final List<InfoItem> videos = (List<InfoItem>) r[1];
                 adapter.set(videos);
+                pager = (com.kamarguinho.supertube.data.Pagers.Pager) r[2];
                 if (videos.isEmpty()) {
                     message.setText(R.string.no_results);
                     message.setVisibility(View.VISIBLE);
@@ -115,6 +128,30 @@ public class ChannelActivity extends AppCompatActivity {
                 progress.setVisibility(View.GONE);
                 message.setText(getString(R.string.error_prefix, Images.errorMessage(error)));
                 message.setVisibility(View.VISIBLE);
+            }
+        });
+    }
+
+    private com.kamarguinho.supertube.data.Pagers.Pager pager;
+    private boolean loadingMore = false;
+
+    private void loadMoreVideos(final ItemAdapter adapter) {
+        final com.kamarguinho.supertube.data.Pagers.Pager p = pager;
+        if (p == null || loadingMore || !p.hasMore()) {
+            return;
+        }
+        loadingMore = true;
+        Bg.run(p::next, new Bg.Callback<List<org.schabi.newpipe.extractor.stream.StreamInfoItem>>() {
+            @Override
+            public void onResult(
+                    final List<org.schabi.newpipe.extractor.stream.StreamInfoItem> items) {
+                loadingMore = false;
+                adapter.add(items);
+            }
+
+            @Override
+            public void onError(final Throwable error) {
+                loadingMore = false;
             }
         });
     }

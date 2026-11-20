@@ -44,6 +44,7 @@ import com.kamarguinho.supertube.data.Favorites;
 import com.kamarguinho.supertube.data.Feed;
 import com.kamarguinho.supertube.data.History;
 import com.kamarguinho.supertube.data.Movies;
+import com.kamarguinho.supertube.data.Pagers;
 import com.kamarguinho.supertube.data.Trending;
 import com.kamarguinho.supertube.data.Importer;
 import com.kamarguinho.supertube.data.Subscriptions;
@@ -144,9 +145,11 @@ public class MainActivity extends AppCompatActivity {
                 }
             });
 
-    private SearchQueryHandler currentQuery;
-    private Page nextPage;
+    private Pagers.Pager searchPager;
+    private String lastQueryText;
     private boolean loadingMore = false;
+    private Pagers.Pager feedPager;
+    private boolean feedLoading = false;
     private int searchToken = 0;
 
     private List<StreamInfoItem> feedCache = null;
@@ -230,8 +233,15 @@ public class MainActivity extends AppCompatActivity {
         list.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(@NonNull final RecyclerView rv, final int dx, final int dy) {
-                if (!feedMode && !favMode && !accountMode && !historyMode && dy > 0
-                        && lm.findLastVisibleItemPosition() >= searchAdapter.getItemCount() - 4) {
+                final RecyclerView.Adapter<?> a = rv.getAdapter();
+                if (dy <= 0 || a == null
+                        || lm.findLastVisibleItemPosition() < a.getItemCount() - 4) {
+                    return;
+                }
+                // Rolagem sem fim: busca/Em alta/Filmes e Inscrições
+                if (feedMode) {
+                    feedMore();
+                } else if (!favMode && !accountMode && !historyMode) {
                     loadMore();
                 }
             }
@@ -261,8 +271,8 @@ public class MainActivity extends AppCompatActivity {
                 showFavorites();
             } else {
                 swipe.setRefreshing(false);
-                if (currentQuery != null) {
-                    search(currentQuery.getSearchString());
+                if (lastQueryText != null) {
+                    search(lastQueryText);
                 } else if (lastChipQuery != null) {
                     search(lastChipQuery);
                 }
@@ -549,60 +559,24 @@ public class MainActivity extends AppCompatActivity {
         searchAdapter.clear();
         message.setVisibility(View.GONE);
         progress.setVisibility(View.VISIBLE);
-        nextPage = null;
-
-        if (Movies.QUERY.equals(q) || Trending.QUERY.equals(q)) {
-            // Em alta (tendências do YouTube) ou Filmes (só filmes completos)
-            currentQuery = null;
-            Bg.run(() -> Movies.QUERY.equals(q) ? Movies.load(50) : Trending.load(), new Bg.Callback<List<StreamInfoItem>>() {
-                @Override
-                public void onResult(final List<StreamInfoItem> result) {
-                    if (token != searchToken) {
-                        return;
-                    }
-                    searchAdapter.set(result);
-                    if (feedMode || favMode || accountMode || historyMode) {
-                        return;
-                    }
-                    progress.setVisibility(View.GONE);
-                    if (result.isEmpty()) {
-                        message.setText(R.string.no_results);
-                        message.setVisibility(View.VISIBLE);
-                    }
-                }
-
-                @Override
-                public void onError(final Throwable error) {
-                    if (token != searchToken || feedMode || favMode || accountMode || historyMode) {
-                        return;
-                    }
-                    progress.setVisibility(View.GONE);
-                    message.setText(getString(R.string.error_prefix,
-                            Images.errorMessage(error)));
-                    message.setVisibility(View.VISIBLE);
-                }
-            });
-            return;
-        }
-
-        Bg.run(() -> {
-            final SearchQueryHandler handler = service.getSearchQHFactory().fromQuery(q);
-            return new Object[]{handler, SearchInfo.getInfo(service, handler)};
-        }, new Bg.Callback<Object[]>() {
+        lastQueryText = q;
+        // Busca normal, "Em alta" ou "Filmes": todas sem fim (vão carregando ao rolar)
+        final Pagers.Pager pager = Pagers.forQuery(q);
+        searchPager = pager;
+        loadingMore = true;
+        Bg.run(pager::next, new Bg.Callback<List<StreamInfoItem>>() {
             @Override
-            public void onResult(final Object[] r) {
+            public void onResult(final List<StreamInfoItem> result) {
                 if (token != searchToken) {
                     return;
                 }
-                currentQuery = (SearchQueryHandler) r[0];
-                final SearchInfo info = (SearchInfo) r[1];
-                nextPage = info.getNextPage();
-                searchAdapter.set(info.getRelatedItems());
+                loadingMore = false;
+                searchAdapter.set(result);
                 if (feedMode || favMode || accountMode || historyMode) {
                     return;
                 }
                 progress.setVisibility(View.GONE);
-                if (searchAdapter.getItemCount() == 0) {
+                if (result.isEmpty()) {
                     message.setText(R.string.no_results);
                     message.setVisibility(View.VISIBLE);
                 }
@@ -610,7 +584,11 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onError(final Throwable error) {
-                if (token != searchToken || feedMode || favMode || accountMode || historyMode) {
+                if (token != searchToken) {
+                    return;
+                }
+                loadingMore = false;
+                if (feedMode || favMode || accountMode || historyMode) {
                     return;
                 }
                 progress.setVisibility(View.GONE);
@@ -621,30 +599,55 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void loadMore() {
-        if (loadingMore || currentQuery == null || !Page.isValid(nextPage)) {
+        final Pagers.Pager pager = searchPager;
+        if (loadingMore || pager == null || !pager.hasMore()) {
             return;
         }
         loadingMore = true;
         final int token = searchToken;
-        final SearchQueryHandler query = currentQuery;
-        final Page page = nextPage;
-        Bg.run(() -> SearchInfo.getMoreItems(service, query, page),
-                new Bg.Callback<ListExtractor.InfoItemsPage<InfoItem>>() {
-                    @Override
-                    public void onResult(final ListExtractor.InfoItemsPage<InfoItem> result) {
-                        loadingMore = false;
-                        if (token != searchToken) {
-                            return;
-                        }
-                        nextPage = result.getNextPage();
-                        searchAdapter.add(result.getItems());
-                    }
+        Bg.run(pager::next, new Bg.Callback<List<StreamInfoItem>>() {
+            @Override
+            public void onResult(final List<StreamInfoItem> result) {
+                if (token != searchToken) {
+                    return;
+                }
+                loadingMore = false;
+                searchAdapter.add(result);
+            }
 
-                    @Override
-                    public void onError(final Throwable error) {
-                        loadingMore = false;
+            @Override
+            public void onError(final Throwable error) {
+                if (token == searchToken) {
+                    loadingMore = false;
+                }
+            }
+        });
+    }
+
+    /** Inscrições: vai carregando vídeos mais antigos dos canais ao rolar. */
+    private void feedMore() {
+        final Pagers.Pager pager = feedPager;
+        if (feedLoading || pager == null || !pager.hasMore()) {
+            return;
+        }
+        feedLoading = true;
+        Bg.run(pager::next, new Bg.Callback<List<StreamInfoItem>>() {
+            @Override
+            public void onResult(final List<StreamInfoItem> result) {
+                feedLoading = false;
+                if (pager == feedPager) {
+                    feedAdapter.add(result);
+                    if (feedCache != null) {
+                        feedCache.addAll(result);
                     }
-                });
+                }
+            }
+
+            @Override
+            public void onError(final Throwable error) {
+                feedLoading = false;
+            }
+        });
     }
 
     private void hideKeyboard() {
@@ -688,9 +691,13 @@ public class MainActivity extends AppCompatActivity {
         if (!swipe.isRefreshing()) {
             progress.setVisibility(View.VISIBLE);
         }
-        Bg.run(() -> Feed.load(channels), new Bg.Callback<List<StreamInfoItem>>() {
+        final Pagers.Pager pager = new Pagers.FeedPager(channels);
+        feedPager = pager;
+        feedLoading = true;
+        Bg.run(pager::next, new Bg.Callback<List<StreamInfoItem>>() {
             @Override
             public void onResult(final List<StreamInfoItem> result) {
+                feedLoading = false;
                 feedCache = result;
                 feedCacheKey = key;
                 if (!feedMode) {
@@ -707,6 +714,7 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onError(final Throwable error) {
+                feedLoading = false;
                 if (!feedMode) {
                     return;
                 }

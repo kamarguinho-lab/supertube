@@ -127,6 +127,16 @@ public class PlayerActivity extends AppCompatActivity {
 
         playerView = findViewById(R.id.player_view);
         details = findViewById(R.id.details);
+        // Descendo na lista de relacionados, sempre carrega mais (sem fim)
+        ((androidx.core.widget.NestedScrollView) details).setOnScrollChangeListener(
+                (androidx.core.widget.NestedScrollView.OnScrollChangeListener)
+                        (v, x, y, oldX, oldY) -> {
+                            final View child = v.getChildAt(0);
+                            if (child != null
+                                    && y + v.getHeight() >= child.getHeight() - 1500) {
+                                loadMoreRelated();
+                            }
+                        });
         progress = findViewById(R.id.progress);
         title = findViewById(R.id.title);
         uploader = findViewById(R.id.uploader);
@@ -282,6 +292,35 @@ public class PlayerActivity extends AppCompatActivity {
         });
     }
 
+    private com.kamarguinho.supertube.data.Pagers.RelatedPager relatedPager;
+    private boolean relatedLoading = false;
+
+    private void loadMoreRelated() {
+        final com.kamarguinho.supertube.data.Pagers.RelatedPager p = relatedPager;
+        if (p == null || relatedLoading || !p.hasMore()) {
+            return;
+        }
+        relatedLoading = true;
+        Bg.run(p::next, new Bg.Callback<List<org.schabi.newpipe.extractor.stream.StreamInfoItem>>() {
+            @Override
+            public void onResult(
+                    final List<org.schabi.newpipe.extractor.stream.StreamInfoItem> items) {
+                if (p != relatedPager) {
+                    return;
+                }
+                relatedLoading = false;
+                related.add(items);
+            }
+
+            @Override
+            public void onError(final Throwable error) {
+                if (p == relatedPager) {
+                    relatedLoading = false;
+                }
+            }
+        });
+    }
+
     private void setupGestures() {
         final android.view.GestureDetector detector = new android.view.GestureDetector(this,
                 new android.view.GestureDetector.SimpleOnGestureListener() {
@@ -377,6 +416,15 @@ public class PlayerActivity extends AppCompatActivity {
                 .apply(RequestOptions.circleCropTransform())
                 .placeholder(R.color.thumb_placeholder).into(uploaderAvatar);
         related.set(info.getRelatedItems());
+        final List<org.schabi.newpipe.extractor.stream.StreamInfoItem> start =
+                new java.util.ArrayList<>();
+        for (final org.schabi.newpipe.extractor.InfoItem i : info.getRelatedItems()) {
+            if (i instanceof org.schabi.newpipe.extractor.stream.StreamInfoItem) {
+                start.add((org.schabi.newpipe.extractor.stream.StreamInfoItem) i);
+            }
+        }
+        relatedPager = new com.kamarguinho.supertube.data.Pagers.RelatedPager(start);
+        relatedLoading = false;
         updateSubscribeButton();
         updateFavoriteButton();
         audioButton.setText(audioOnly ? R.string.video_mode : R.string.audio_only);

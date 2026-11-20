@@ -14,7 +14,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.RequestOptions;
 import com.kamarguinho.supertube.R;
-import com.kamarguinho.supertube.data.Feed;
+import com.kamarguinho.supertube.data.Pagers;
 import com.kamarguinho.supertube.data.Subscriptions;
 import com.kamarguinho.supertube.util.Bg;
 import com.kamarguinho.supertube.util.Images;
@@ -60,20 +60,18 @@ public class TvChannelActivity extends AppCompatActivity {
         grid.setLayoutManager(new GridLayoutManager(this, 4));
         final TvAdapters.VideoAdapter adapter = new TvAdapters.VideoAdapter(true);
         grid.setAdapter(adapter);
+        // Vai carregando mais vídeos do canal enquanto desce
+        final TvAdapters.PagedList paged = new TvAdapters.PagedList(adapter, grid);
 
         final String url = getIntent().getStringExtra(EXTRA_URL);
         final int serviceId = getIntent().getIntExtra(EXTRA_SERVICE, 0);
         subscribe.requestFocus();
 
-        Bg.run(() -> {
-            final ChannelInfo c = ChannelInfo.getInfo(NewPipe.getService(serviceId), url);
-            return new Object[]{c, TvAdapters.streamsOnly(Feed.channelVideos(c))};
-        }, new Bg.Callback<Object[]>() {
+        Bg.run(() -> ChannelInfo.getInfo(NewPipe.getService(serviceId), url),
+                new Bg.Callback<ChannelInfo>() {
             @Override
-            @SuppressWarnings("unchecked")
-            public void onResult(final Object[] r) {
-                progress.setVisibility(View.GONE);
-                channel = (ChannelInfo) r[0];
+            public void onResult(final ChannelInfo c) {
+                channel = c;
                 name.setText(channel.getName());
                 info.setText(channel.getSubscriberCount() > 0
                         ? getString(R.string.subs_count,
@@ -84,12 +82,15 @@ public class TvChannelActivity extends AppCompatActivity {
                 Glide.with(TvChannelActivity.this).load(Images.best(channel.getBanners()))
                         .into(banner);
                 updateButton();
-                final List<StreamInfoItem> videos = (List<StreamInfoItem>) r[1];
-                adapter.set(videos);
-                if (videos.isEmpty()) {
-                    message.setText(R.string.no_results);
-                    message.setVisibility(View.VISIBLE);
-                }
+                paged.start(new Pagers.ChannelPager(c), (videos, error) -> {
+                    progress.setVisibility(View.GONE);
+                    if (videos.isEmpty()) {
+                        message.setText(error != null
+                                ? getString(R.string.error_prefix, Images.errorMessage(error))
+                                : getString(R.string.no_results));
+                        message.setVisibility(View.VISIBLE);
+                    }
+                });
             }
 
             @Override

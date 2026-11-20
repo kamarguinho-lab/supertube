@@ -16,7 +16,9 @@ import com.bumptech.glide.load.resource.bitmap.CenterCrop;
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners;
 import com.bumptech.glide.request.RequestOptions;
 import com.kamarguinho.supertube.R;
+import com.kamarguinho.supertube.data.Pagers;
 import com.kamarguinho.supertube.data.Subscriptions;
+import com.kamarguinho.supertube.util.Bg;
 import com.kamarguinho.supertube.util.Images;
 
 import org.schabi.newpipe.extractor.InfoItem;
@@ -40,6 +42,114 @@ final class TvAdapters {
             view.animate().scaleX(s).scaleY(s).setDuration(150).start();
             view.setElevation(hasFocus ? 8f : 0f);
         });
+    }
+
+    /** Tira os Shorts de uma lista já pronta. */
+    static List<StreamInfoItem> noShorts(final List<StreamInfoItem> items) {
+        final List<StreamInfoItem> out = new ArrayList<>();
+        for (final StreamInfoItem i : items) {
+            if (!com.kamarguinho.supertube.data.Movies.isShort(i)) {
+                out.add(i);
+            }
+        }
+        return out;
+    }
+
+    /** Chama {@code onNearEnd} quando a lista chega perto do fim (para os lados ou para baixo). */
+    static void endless(final RecyclerView list, final Runnable onNearEnd) {
+        list.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(@NonNull final RecyclerView rv, final int dx, final int dy) {
+                final RecyclerView.LayoutManager lm = rv.getLayoutManager();
+                final RecyclerView.Adapter<?> a = rv.getAdapter();
+                if (lm instanceof LinearLayoutManager && a != null && a.getItemCount() > 0
+                        && ((LinearLayoutManager) lm).findLastVisibleItemPosition()
+                        >= a.getItemCount() - 6) {
+                    onNearEnd.run();
+                }
+            }
+        });
+    }
+
+    /** Grade/lista que vai carregando mais vídeos sozinha. */
+    static final class PagedList {
+        final VideoAdapter adapter;
+        private Pagers.Pager pager;
+        private boolean busy = false;
+        private int token = 0;
+
+        interface FirstPage {
+            void onFirst(List<StreamInfoItem> items, Throwable error);
+        }
+
+        PagedList(final VideoAdapter adapter, final RecyclerView list) {
+            this.adapter = adapter;
+            if (list != null) {
+                endless(list, this::more);
+            }
+        }
+
+        void start(final Pagers.Pager newPager, final FirstPage first) {
+            pager = newPager;
+            busy = true;
+            final int t = ++token;
+            adapter.set(new ArrayList<>());
+            Bg.run(newPager::next, new Bg.Callback<List<StreamInfoItem>>() {
+                @Override
+                public void onResult(final List<StreamInfoItem> items) {
+                    if (t != token) {
+                        return;
+                    }
+                    busy = false;
+                    final List<StreamInfoItem> clean = noShorts(items);
+                    adapter.set(clean);
+                    first.onFirst(clean, null);
+                }
+
+                @Override
+                public void onError(final Throwable error) {
+                    if (t != token) {
+                        return;
+                    }
+                    busy = false;
+                    first.onFirst(new ArrayList<>(), error);
+                }
+            });
+        }
+
+        /** Mostra uma lista pronta (sem carregar mais). */
+        void fixed(final List<StreamInfoItem> items) {
+            token++;
+            pager = null;
+            busy = false;
+            adapter.set(items);
+        }
+
+        void more() {
+            final Pagers.Pager p = pager;
+            if (p == null || busy || !p.hasMore()) {
+                return;
+            }
+            busy = true;
+            final int t = token;
+            Bg.run(p::next, new Bg.Callback<List<StreamInfoItem>>() {
+                @Override
+                public void onResult(final List<StreamInfoItem> items) {
+                    if (t != token) {
+                        return;
+                    }
+                    busy = false;
+                    adapter.add(noShorts(items));
+                }
+
+                @Override
+                public void onError(final Throwable error) {
+                    if (t == token) {
+                        busy = false;
+                    }
+                }
+            });
+        }
     }
 
     static List<StreamInfoItem> streamsOnly(final List<InfoItem> items) {
@@ -208,9 +318,16 @@ final class TvAdapters {
         final String title;
         final VideoAdapter adapter = new VideoAdapter(false);
         boolean loading = true;
+        Pagers.Pager pager;
+        boolean busy = false;
 
         Row(final String title) {
             this.title = title;
+        }
+
+        Row(final String title, final Pagers.Pager pager) {
+            this.title = title;
+            this.pager = pager;
         }
     }
 
@@ -227,6 +344,46 @@ final class TvAdapters {
         void add(final Row row) {
             rows.add(row);
             notifyItemInserted(rows.size() - 1);
+        }
+
+        /** Começa a fileira: carrega a primeira leva pelo paginador dela. */
+        void start(final Row row) {
+            add(row);
+            loadMore(row);
+        }
+
+        /** Carrega mais vídeos na fileira (rolagem para o lado sem fim). */
+        void loadMore(final Row row) {
+            final Pagers.Pager p = row.pager;
+            if (p == null || row.busy || (!row.loading && !p.hasMore())) {
+                return;
+            }
+            row.busy = true;
+            Bg.run(p::next, new Bg.Callback<List<StreamInfoItem>>() {
+                @Override
+                public void onResult(final List<StreamInfoItem> items) {
+                    row.busy = false;
+                    if (!rows.contains(row)) {
+                        return;
+                    }
+                    row.adapter.add(noShorts(items));
+                    if (row.loading) {
+                        loaded(row);
+                    }
+                }
+
+                @Override
+                public void onError(final Throwable error) {
+                    row.busy = false;
+                    if (row.loading && rows.contains(row)) {
+                        loaded(row);
+                    }
+                }
+            });
+        }
+
+        int size() {
+            return rows.size();
         }
 
         void clear() {
@@ -261,12 +418,18 @@ final class TvAdapters {
                     LinearLayoutManager.HORIZONTAL, false));
             h.list.setRecycledViewPool(pool);
             h.list.setItemAnimator(null);
+            endless(h.list, () -> {
+                if (h.row != null) {
+                    loadMore(h.row);
+                }
+            });
             return h;
         }
 
         @Override
         public void onBindViewHolder(@NonNull final Holder h, final int position) {
             final Row row = rows.get(position);
+            h.row = row;
             h.title.setText(row.title);
             if (h.list.getAdapter() != row.adapter) {
                 h.list.setAdapter(row.adapter);
@@ -283,6 +446,7 @@ final class TvAdapters {
             final TextView title;
             final RecyclerView list;
             final View progress;
+            Row row;
 
             Holder(final View v) {
                 super(v);

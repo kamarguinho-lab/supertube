@@ -83,7 +83,7 @@ public class TvPlayerActivity extends AppCompatActivity {
     private boolean loadingMore = false;
     private int extraRows = 0;
     private final java.util.Set<String> usedSeeds = new java.util.HashSet<>();
-    private static final int MAX_EXTRA_ROWS = 20;
+    private static final int MAX_EXTRA_ROWS = 40;
 
     public static void open(final Context context, final String url) {
         context.startActivity(new Intent(context, TvPlayerActivity.class)
@@ -304,6 +304,7 @@ public class TvPlayerActivity extends AppCompatActivity {
         panelRows.setLayoutManager(new LinearLayoutManager(this));
         panelRows.setItemAnimator(null);
         panelRows.setAdapter(rowsAdapter);
+        TvAdapters.endless(panelRows, this::loadMoreRows);
 
         // Descendo nas fileiras, o painel cresce até a tela toda e carrega mais fileiras
         panel.getViewTreeObserver().addOnGlobalFocusChangeListener((oldFocus, newFocus) -> {
@@ -345,66 +346,33 @@ public class TvPlayerActivity extends AppCompatActivity {
         panelScrim.animate().alpha(expanded ? 1f : 0f).setDuration(200).start();
     }
 
-    /** Primeiras fileiras: A seguir, Mais do canal e Populares. */
+    /** Primeiras fileiras: A seguir, Mais do canal e Populares (cada uma sem fim para o lado). */
     private void buildPanelRows(final StreamInfo info, final int t) {
-        final TvAdapters.Row next = new TvAdapters.Row(getString(R.string.tv_related));
-        next.adapter.set(TvAdapters.streamsOnly(info.getRelatedItems()));
-        next.loading = false;
-        rowsAdapter.add(next);
         usedSeeds.add(info.getUrl());
-
+        rowsAdapter.start(new TvAdapters.Row(getString(R.string.tv_related),
+                com.kamarguinho.supertube.data.Pagers.startingWith(
+                        TvAdapters.streamsOnly(info.getRelatedItems()))));
         if (info.getUploaderUrl() != null) {
-            final TvAdapters.Row channelRow = new TvAdapters.Row(
-                    getString(R.string.tv_more_from, info.getUploaderName()));
-            rowsAdapter.add(channelRow);
-            Bg.run(() -> TvAdapters.streamsOnly(com.kamarguinho.supertube.data.Feed
-                            .channelVideos(org.schabi.newpipe.extractor.channel.ChannelInfo
-                                    .getInfo(NewPipe.getService(info.getServiceId()),
-                                            info.getUploaderUrl()))),
-                    rowCallback(channelRow, t));
+            rowsAdapter.start(new TvAdapters.Row(
+                    getString(R.string.tv_more_from, info.getUploaderName()),
+                    new com.kamarguinho.supertube.data.Pagers.ChannelUrlPager(
+                            info.getServiceId(), info.getUploaderUrl())));
         }
-
-        final TvAdapters.Row popular = new TvAdapters.Row(getString(R.string.tv_popular_now));
-        rowsAdapter.add(popular);
-        final org.schabi.newpipe.extractor.StreamingService yt =
-                org.schabi.newpipe.extractor.ServiceList.YouTube;
-        Bg.run(() -> TvAdapters.streamsOnly(org.schabi.newpipe.extractor.search.SearchInfo
-                        .getInfo(yt, yt.getSearchQHFactory().fromQuery("em alta hoje"))
-                        .getRelatedItems()),
-                rowCallback(popular, t));
-    }
-
-    private Bg.Callback<java.util.List<StreamInfoItem>> rowCallback(final TvAdapters.Row row,
-                                                                   final int t) {
-        return new Bg.Callback<java.util.List<StreamInfoItem>>() {
-            @Override
-            public void onResult(final java.util.List<StreamInfoItem> result) {
-                if (t != token) {
-                    return;
-                }
-                row.adapter.set(result);
-                rowsAdapter.loaded(row);
-            }
-
-            @Override
-            public void onError(final Throwable error) {
-                if (t == token) {
-                    rowsAdapter.loaded(row);
-                }
-            }
-        };
+        rowsAdapter.start(new TvAdapters.Row(getString(R.string.tv_popular_now),
+                new com.kamarguinho.supertube.data.Pagers.TrendingPager()));
     }
 
     /**
-     * Fileiras sem fim: pega um vídeo das fileiras de cima que ainda não foi usado
-     * e cria uma fileira "Mais como ..." com os relacionados dele.
+     * Fileiras sem fim para baixo: pega um vídeo das fileiras de cima que ainda não foi
+     * usado e cria uma fileira "Mais como ..." (que também não tem fim para o lado).
      */
     private void loadMoreRows() {
-        if (loadingMore || extraRows >= MAX_EXTRA_ROWS) {
+        final int n = rowsAdapter.getItemCount();
+        if (n == 0 || extraRows >= MAX_EXTRA_ROWS || rowsAdapter.get(n - 1).loading) {
             return;
         }
         StreamInfoItem seed = null;
-        for (int r = 0; r < rowsAdapter.getItemCount() && seed == null; r++) {
+        for (int r = 0; r < n && seed == null; r++) {
             for (final StreamInfoItem item : rowsAdapter.get(r).adapter.items()) {
                 if (!usedSeeds.contains(item.getUrl())) {
                     seed = item;
@@ -415,36 +383,11 @@ public class TvPlayerActivity extends AppCompatActivity {
         if (seed == null) {
             return;
         }
-        final StreamInfoItem chosen = seed;
-        usedSeeds.add(chosen.getUrl());
-        loadingMore = true;
+        usedSeeds.add(seed.getUrl());
         extraRows++;
-        final int t = token;
-        final TvAdapters.Row row = new TvAdapters.Row(
-                getString(R.string.tv_more_like, chosen.getName()));
-        rowsAdapter.add(row);
-        Bg.run(() -> TvAdapters.streamsOnly(StreamInfo.getInfo(
-                        NewPipe.getServiceByUrl(chosen.getUrl()), chosen.getUrl())
-                        .getRelatedItems()),
-                new Bg.Callback<java.util.List<StreamInfoItem>>() {
-                    @Override
-                    public void onResult(final java.util.List<StreamInfoItem> result) {
-                        loadingMore = false;
-                        if (t != token) {
-                            return;
-                        }
-                        row.adapter.set(result);
-                        rowsAdapter.loaded(row);
-                    }
-
-                    @Override
-                    public void onError(final Throwable error) {
-                        loadingMore = false;
-                        if (t == token) {
-                            rowsAdapter.loaded(row);
-                        }
-                    }
-                });
+        rowsAdapter.start(new TvAdapters.Row(getString(R.string.tv_more_like, seed.getName()),
+                new com.kamarguinho.supertube.data.Pagers.RelatedPager(
+                        java.util.Collections.singletonList(seed))));
     }
 
     private static void setAction(final View action, final int icon, final int label) {
