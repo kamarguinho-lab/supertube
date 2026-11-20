@@ -44,6 +44,50 @@ public final class Movies {
             "full movie english",
     };
 
+    /** Gêneros de filmes: nome mostrado e as buscas usadas para achar os filmes. */
+    public static final String[][] GENRES = {
+            {"Ação", "filme de ação completo dublado", "filme ação policial completo dublado",
+                    "filme de ação completo dublado lançamento"},
+            {"Comédia", "filme de comédia completo dublado", "comédia nacional filme completo",
+                    "filme comédia romântica completo dublado"},
+            {"Terror", "filme de terror completo dublado", "filme de terror completo legendado"},
+            {"Suspense", "filme de suspense completo dublado", "filme thriller completo dublado"},
+            {"Drama", "filme de drama completo dublado", "filme drama baseado em fatos reais completo dublado"},
+            {"Aventura", "filme de aventura completo dublado"},
+            {"Ficção científica", "filme de ficção científica completo dublado"},
+            {"Romance", "filme de romance completo dublado", "filme romântico completo dublado"},
+            {"Infantil e animação", "filme infantil completo dublado",
+                    "filme de animação completo dublado", "filme desenho completo dublado"},
+            {"Nacional", "filme nacional completo", "filme brasileiro completo"},
+            {"Policial", "filme policial completo dublado", "filme de máfia completo dublado"},
+            {"Guerra", "filme de guerra completo dublado"},
+            {"Faroeste", "filme de faroeste completo dublado", "filme western completo dublado"},
+            {"Fé e família", "filme evangélico completo dublado", "filme cristão completo dublado"},
+            {"Clássicos", "filme clássico completo dublado", "filme antigo completo dublado"},
+            {"Documentários", "documentário completo dublado", "documentário completo em português"},
+            {"Em inglês", "full movie english", "full length movie free"},
+    };
+
+    /** Texto especial de um gênero (ex.: "__filmes_completos__:Terror"). */
+    public static String genreQuery(final String genre) {
+        return QUERY + ":" + genre;
+    }
+
+    /** Paginador para "todos os filmes" ou para um gênero. */
+    public static Pagers.Pager pagerFor(final String query) {
+        if (query.startsWith(QUERY + ":")) {
+            final String name = query.substring(QUERY.length() + 1);
+            for (final String[] g : GENRES) {
+                if (g[0].equals(name)) {
+                    final String[] queries = new String[g.length - 1];
+                    System.arraycopy(g, 1, queries, 0, queries.length);
+                    return new MoviePager(queries);
+                }
+            }
+        }
+        return new MoviePager(QUERIES);
+    }
+
     private Movies() {
     }
 
@@ -58,12 +102,12 @@ public final class Movies {
     }
 
     public static Pagers.Pager pager() {
-        return new MoviePager();
+        return new MoviePager(QUERIES);
     }
 
     /** Lista de filmes de uma vez (usado nas fileiras). */
     public static List<StreamInfoItem> load(final int wanted) throws Exception {
-        final MoviePager pager = new MoviePager();
+        final MoviePager pager = new MoviePager(QUERIES);
         final List<StreamInfoItem> out = new ArrayList<>();
         for (int i = 0; i < 6 && out.size() < wanted && pager.hasMore(); i++) {
             out.addAll(pager.next());
@@ -73,6 +117,7 @@ public final class Movies {
 
     /** Percorre as buscas de filmes página por página; no fim, continua por relacionados. */
     private static final class MoviePager implements Pagers.Pager {
+        private final String[] queries;
         private final Set<String> seen = new HashSet<>();
         private final List<StreamInfoItem> found = new ArrayList<>();
         private int queryIndex = 0;
@@ -81,6 +126,10 @@ public final class Movies {
         private boolean queryStarted = false;
         private Pagers.RelatedPager related;
 
+        MoviePager(final String[] queries) {
+            this.queries = queries;
+        }
+
         @Override
         public synchronized List<StreamInfoItem> next() throws Exception {
             final StreamingService yt = ServiceList.YouTube;
@@ -88,12 +137,12 @@ public final class Movies {
             Exception lastError = null;
             int requests = 0;
 
-            while (out.size() < BATCH && requests < 8 && queryIndex < QUERIES.length) {
+            while (out.size() < BATCH && requests < 8 && queryIndex < queries.length) {
                 requests++;
                 try {
                     if (!queryStarted) {
                         queryStarted = true;
-                        handler = yt.getSearchQHFactory().fromQuery(QUERIES[queryIndex],
+                        handler = yt.getSearchQHFactory().fromQuery(queries[queryIndex],
                                 Collections.singletonList(
                                         YoutubeSearchQueryHandlerFactory.VIDEOS), "");
                         final SearchInfo info = SearchInfo.getInfo(yt, handler);
@@ -116,7 +165,7 @@ public final class Movies {
                 }
             }
 
-            if (out.isEmpty() && queryIndex >= QUERIES.length) {
+            if (out.isEmpty() && queryIndex >= queries.length) {
                 // Acabaram as buscas: continua com filmes relacionados aos já mostrados
                 if (related == null) {
                     related = new Pagers.RelatedPager(new ArrayList<>(found), seen,
@@ -133,7 +182,7 @@ public final class Movies {
 
         @Override
         public synchronized boolean hasMore() {
-            return queryIndex < QUERIES.length || related == null || related.hasMore();
+            return queryIndex < queries.length || related == null || related.hasMore();
         }
     }
 

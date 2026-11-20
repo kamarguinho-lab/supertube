@@ -71,6 +71,8 @@ public class MainActivity extends AppCompatActivity {
     private View searchBar;
     private View brandBar;
     private View chipsScroll;
+    private View genreScroll;
+    private Chip firstGenreChip;
     private BottomNavigationView nav;
     private boolean searchOpen = false;
     private String lastChipQuery = null;
@@ -305,6 +307,38 @@ public class MainActivity extends AppCompatActivity {
                 chip.setChecked(true);
             }
         }
+        // Gêneros que aparecem dentro de "Filmes"
+        genreScroll = findViewById(R.id.genre_scroll);
+        final ChipGroup genres = findViewById(R.id.genre_chips);
+        final String[][] genreList = new String[Movies.GENRES.length + 1][];
+        genreList[0] = new String[]{getString(R.string.movies_all), Movies.QUERY};
+        for (int i = 0; i < Movies.GENRES.length; i++) {
+            genreList[i + 1] = new String[]{Movies.GENRES[i][0],
+                    Movies.genreQuery(Movies.GENRES[i][0])};
+        }
+        for (int i = 0; i < genreList.length; i++) {
+            final Chip chip = (Chip) LayoutInflater.from(this)
+                    .inflate(R.layout.chip_category, genres, false);
+            chip.setId(View.generateViewId());
+            chip.setText(genreList[i][0]);
+            chip.setTag(genreList[i][1]);
+            genres.addView(chip);
+            if (i == 0) {
+                chip.setChecked(true);
+                firstGenreChip = chip;
+            }
+        }
+        genres.setOnCheckedStateChangeListener((group, ids) -> {
+            if (ids.isEmpty()) {
+                return;
+            }
+            final Chip chip = group.findViewById(ids.get(0));
+            if (chip != null) {
+                lastChipQuery = (String) chip.getTag();
+                search(lastChipQuery);
+            }
+        });
+
         chips.setOnCheckedStateChangeListener((group, ids) -> {
             if (ids.isEmpty()) {
                 return;
@@ -313,6 +347,13 @@ public class MainActivity extends AppCompatActivity {
             if (chip != null) {
                 closeSearch();
                 lastChipQuery = (String) chip.getTag();
+                final boolean movies = Movies.QUERY.equals(lastChipQuery);
+                genreScroll.setVisibility(movies ? View.VISIBLE : View.GONE);
+                if (movies && !firstGenreChip.isChecked()) {
+                    // volta para "Todos os filmes" (o listener do gênero faz a busca)
+                    firstGenreChip.setChecked(true);
+                    return;
+                }
                 search(lastChipQuery);
             }
         });
@@ -377,6 +418,7 @@ public class MainActivity extends AppCompatActivity {
         searchBar.setVisibility(View.GONE);
         brandBar.setVisibility(View.VISIBLE);
         chipsScroll.setVisibility(View.GONE);
+        genreScroll.setVisibility(View.GONE);
         swipe.setRefreshing(false);
         progress.setVisibility(View.GONE);
         message.setVisibility(View.GONE);
@@ -513,6 +555,8 @@ public class MainActivity extends AppCompatActivity {
         searchBar.setVisibility(searchOpen ? View.VISIBLE : View.GONE);
         brandBar.setVisibility(searchOpen ? View.GONE : View.VISIBLE);
         chipsScroll.setVisibility(View.VISIBLE);
+        genreScroll.setVisibility(lastChipQuery != null && lastChipQuery.startsWith(Movies.QUERY)
+                ? View.VISIBLE : View.GONE);
         list.setAdapter(searchAdapter);
         if (searchAdapter.getItemCount() == 0) {
             message.setText(R.string.search_hint_message);

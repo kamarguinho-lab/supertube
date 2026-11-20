@@ -435,6 +435,11 @@ final class TvAdapters {
                 h.list.setAdapter(row.adapter);
             }
             h.progress.setVisibility(row.loading ? View.VISIBLE : View.GONE);
+            // Fileiras só começam a carregar quando aparecem na tela
+            if (row.loading && !row.busy && row.pager != null
+                    && row.adapter.getItemCount() == 0) {
+                loadMore(row);
+            }
         }
 
         @Override

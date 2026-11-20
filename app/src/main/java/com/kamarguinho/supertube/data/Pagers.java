@@ -56,8 +56,8 @@ public final class Pagers {
         if (Trending.QUERY.equals(query)) {
             return new TrendingPager();
         }
-        if (Movies.QUERY.equals(query)) {
-            return Movies.pager();
+        if (query.startsWith(Movies.QUERY)) {
+            return Movies.pagerFor(query);
         }
         return new SearchPager(query);
     }

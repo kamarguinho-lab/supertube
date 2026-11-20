@@ -109,6 +109,25 @@
             app:singleSelection="true" />
     </HorizontalScrollView>
 
+    <HorizontalScrollView
+        android:id="@+id/genre_scroll"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:scrollbars="none"
+        android:visibility="gone">
+
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/genre_chips"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="12dp"
+            android:paddingBottom="6dp"
+            app:chipSpacingHorizontal="8dp"
+            app:selectionRequired="true"
+            app:singleLine="true"
+            app:singleSelection="true" />
+    </HorizontalScrollView>
+
     <LinearLayout
         android:id="@+id/history_header"
         android:layout_width="match_parent"

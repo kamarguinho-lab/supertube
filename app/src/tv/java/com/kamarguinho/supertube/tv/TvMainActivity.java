@@ -110,6 +110,7 @@ public class TvMainActivity extends AppCompatActivity {
     private RecyclerView homeList;
     private final List<TextView> chips = new ArrayList<>();
     private TvAdapters.RowsAdapter rowsAdapter;
+    private final TvAdapters.RowsAdapter moviesRows = new TvAdapters.RowsAdapter();
     private final TvAdapters.VideoAdapter categoryGrid = new TvAdapters.VideoAdapter(true);
     private int chipSelected = 0;
     private int homeToken = 0;
@@ -378,7 +379,7 @@ public class TvMainActivity extends AppCompatActivity {
         TvAdapters.endless(homeList, () -> {
             if (homeList.getAdapter() == categoryGrid) {
                 categoryPaged.more();
-            } else {
+            } else if (homeList.getAdapter() == rowsAdapter) {
                 addMoreHomeRow();
             }
         });
@@ -408,6 +409,25 @@ public class TvMainActivity extends AppCompatActivity {
             if (!homeRowsLoaded) {
                 loadHomeRows();
             }
+            return;
+        }
+
+        if (Movies.QUERY.equals(CATEGORIES[index][1])) {
+            // Filmes: uma fileira por gênero (cada uma sem fim para o lado)
+            homeList.setLayoutManager(new LinearLayoutManager(this));
+            homeList.setAdapter(moviesRows);
+            if (moviesRows.size() == 0) {
+                final List<TvAdapters.Row> rows = new ArrayList<>();
+                rows.add(new TvAdapters.Row(getString(R.string.movies_all),
+                        Pagers.forQuery(Movies.QUERY)));
+                for (final String[] g : Movies.GENRES) {
+                    rows.add(new TvAdapters.Row(g[0],
+                            Pagers.forQuery(Movies.genreQuery(g[0]))));
+                }
+                moviesRows.set(rows);
+            }
+            progress.setVisibility(View.GONE);
+            message.setVisibility(View.GONE);
             return;
         }
 
