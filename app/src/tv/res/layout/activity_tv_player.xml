@@ -113,6 +113,10 @@
                     layout="@layout/tv_action" />
 
                 <include
+                    android:id="@+id/action_subtitles"
+                    layout="@layout/tv_action" />
+
+                <include
                     android:id="@+id/action_next"
                     layout="@layout/tv_action" />
             </LinearLayout>

@@ -30,6 +30,7 @@ import com.kamarguinho.supertube.R;
 import com.kamarguinho.supertube.data.Favorites;
 import com.kamarguinho.supertube.data.Subscriptions;
 import com.kamarguinho.supertube.player.MediaResolver;
+import com.kamarguinho.supertube.player.Subtitles;
 import com.kamarguinho.supertube.util.Bg;
 import com.kamarguinho.supertube.util.Images;
 
@@ -66,6 +67,8 @@ public class TvPlayerActivity extends AppCompatActivity {
     private View actionChannel;
     private View actionSubscribe;
     private View actionNext;
+    private View actionSubtitles;
+    private Subtitles.Option currentSubtitle;
     private View panelBox;
     private View panelScrim;
     private View actionsRow;
@@ -120,6 +123,8 @@ public class TvPlayerActivity extends AppCompatActivity {
             }
         });
         playerView.setPlayer(player);
+        playerView.setShowSubtitleButton(false);
+        Subtitles.applyStyle(playerView.getSubtitleView(), 1.15f);
         playerView.setControllerVisibilityListener(
                 (StyledPlayerView.ControllerVisibilityListener) visibility ->
                 {
@@ -156,7 +161,9 @@ public class TvPlayerActivity extends AppCompatActivity {
         player.stop();
         Bg.run(() -> {
             final StreamInfo info = StreamInfo.getInfo(NewPipe.getServiceByUrl(url), url);
-            return new Object[]{info, resolver.resolve(info, MAX_HEIGHT, false)};
+            final Subtitles.Option sub = Subtitles.pick(info,
+                    Subtitles.mode(TvPlayerActivity.this));
+            return new Object[]{info, resolver.resolve(info, MAX_HEIGHT, false, sub), sub};
         }, new Bg.Callback<Object[]>() {
             @Override
             public void onResult(final Object[] r) {
@@ -182,6 +189,8 @@ public class TvPlayerActivity extends AppCompatActivity {
                 updateHint();
                 updateActions();
                 buildPanelRows(current, t);
+                currentSubtitle = (Subtitles.Option) r[2];
+                Subtitles.select(player, currentSubtitle);
                 player.setMediaSource((MediaSource) r[1]);
                 player.prepare();
                 player.play();
@@ -239,6 +248,10 @@ public class TvPlayerActivity extends AppCompatActivity {
         actionChannel = findViewById(R.id.action_channel);
         actionSubscribe = findViewById(R.id.action_subscribe);
         actionNext = findViewById(R.id.action_next);
+        actionSubtitles = findViewById(R.id.action_subtitles);
+        setAction(actionSubtitles, R.drawable.ic_subtitles, R.string.subtitles);
+        TvAdapters.focusZoom(actionSubtitles, 1.06f);
+        actionSubtitles.setOnClickListener(v -> chooseSubtitle());
 
         setAction(actionChannel, R.drawable.ic_account_outline, R.string.tv_go_channel);
         setAction(actionNext, R.drawable.ic_skip_next, R.string.tv_next);
@@ -460,6 +473,38 @@ public class TvPlayerActivity extends AppCompatActivity {
         updateActions();
     }
 
+    private void chooseSubtitle() {
+        final StreamInfo info = current;
+        if (info == null) {
+            return;
+        }
+        Subtitles.showMenu(this, info, currentSubtitle, chosen -> {
+            currentSubtitle = chosen;
+            final long position = player.getCurrentPosition();
+            final int t = token;
+            Bg.run(() -> resolver.resolve(info, MAX_HEIGHT, false, chosen),
+                    new Bg.Callback<MediaSource>() {
+                        @Override
+                        public void onResult(final MediaSource source) {
+                            if (t != token) {
+                                return;
+                            }
+                            Subtitles.select(player, chosen);
+                            player.setMediaSource(source, position);
+                            player.prepare();
+                            player.play();
+                            hidePanel();
+                        }
+
+                        @Override
+                        public void onError(final Throwable error) {
+                            Toast.makeText(TvPlayerActivity.this, Images.errorMessage(error),
+                                    Toast.LENGTH_LONG).show();
+                        }
+                    });
+        });
+    }
+
     private boolean panelVisible() {
         return panel.getVisibility() == View.VISIBLE;
     }
@@ -500,7 +545,8 @@ public class TvPlayerActivity extends AppCompatActivity {
                 }
                 final View focus = getCurrentFocus();
                 final boolean onActions = focus == actionFavorite || focus == actionChannel
-                        || focus == actionSubscribe || focus == actionNext;
+                        || focus == actionSubscribe || focus == actionNext
+                        || focus == actionSubtitles;
                 if (k == KeyEvent.KEYCODE_DPAD_UP && onActions) {
                     hidePanel();
                     return true;

@@ -70,4 +70,7 @@
     <string name="tv_more_from">Mais de %1$s</string>
     <string name="tv_more_like">Mais como \"%1$s\"</string>
     <string name="tv_popular_now">Populares agora</string>
+    <string name="subtitles">Legendas</string>
+    <string name="subtitles_off">Desativadas</string>
+    <string name="subtitles_none">Este vídeo não tem legendas.</string>
 </resources>

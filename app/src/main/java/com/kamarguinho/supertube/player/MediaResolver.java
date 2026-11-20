@@ -5,7 +5,9 @@ import android.net.Uri;
 
 import androidx.annotation.Nullable;
 
+import com.google.android.exoplayer2.C;
 import com.google.android.exoplayer2.MediaItem;
+import com.google.android.exoplayer2.source.SingleSampleMediaSource;
 import com.google.android.exoplayer2.source.MediaSource;
 import com.google.android.exoplayer2.source.MergingMediaSource;
 import com.google.android.exoplayer2.source.ProgressiveMediaSource;
@@ -62,6 +64,31 @@ public final class MediaResolver {
      */
     public MediaSource resolve(final StreamInfo info, final int maxHeight,
                                final boolean audioOnly) throws Exception {
+        return resolve(info, maxHeight, audioOnly, null);
+    }
+
+    /** Igual ao de cima, juntando uma legenda (ou nenhuma, se {@code subtitle} for null). */
+    public MediaSource resolve(final StreamInfo info, final int maxHeight,
+                               final boolean audioOnly,
+                               @Nullable final Subtitles.Option subtitle) throws Exception {
+        final MediaSource media = resolveMedia(info, maxHeight, audioOnly);
+        if (subtitle == null) {
+            return media;
+        }
+        final MediaItem.SubtitleConfiguration config =
+                new MediaItem.SubtitleConfiguration.Builder(Uri.parse(subtitle.url))
+                        .setMimeType(subtitle.mimeType)
+                        .setLanguage(subtitle.language)
+                        .setLabel(subtitle.label)
+                        .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
+                        .build();
+        final MediaSource text = new SingleSampleMediaSource.Factory(generic)
+                .createMediaSource(config, C.TIME_UNSET);
+        return new MergingMediaSource(media, text);
+    }
+
+    private MediaSource resolveMedia(final StreamInfo info, final int maxHeight,
+                                     final boolean audioOnly) throws Exception {
         final boolean youtube = info.getServiceId() == ServiceList.YouTube.getServiceId();
         final StreamType type = info.getStreamType();
 

@@ -45,6 +45,7 @@ import com.kamarguinho.supertube.data.Favorites;
 import com.kamarguinho.supertube.data.Subscriptions;
 import com.kamarguinho.supertube.player.MediaResolver;
 import com.kamarguinho.supertube.player.PlayerService;
+import com.kamarguinho.supertube.player.Subtitles;
 import com.kamarguinho.supertube.util.Bg;
 import com.kamarguinho.supertube.util.Images;
 
@@ -66,6 +67,7 @@ public class PlayerActivity extends AppCompatActivity {
     /** Último vídeo carregado (para voltar à tela sem recarregar). */
     private static StreamInfo currentInfo;
     private static boolean audioOnly = false;
+    private static Subtitles.Option currentSubtitle;
 
     private StyledPlayerView playerView;
     private ExoPlayer player;
@@ -120,6 +122,7 @@ public class PlayerActivity extends AppCompatActivity {
         description.setOnClickListener(v -> toggleDescription());
         title.setOnClickListener(v -> toggleDescription());
         findViewById(R.id.share).setOnClickListener(v -> share());
+        findViewById(R.id.subtitles).setOnClickListener(v -> chooseSubtitle());
         uploaderAvatar = findViewById(R.id.uploader_avatar);
         subscribeButton = findViewById(R.id.subscribe);
         audioButton = findViewById(R.id.audio_only);
@@ -133,6 +136,8 @@ public class PlayerActivity extends AppCompatActivity {
         player = PlayerService.getPlayer(this);
         player.addListener(errorListener);
         playerView.setPlayer(player);
+        playerView.setShowSubtitleButton(false);
+        Subtitles.applyStyle(playerView.getSubtitleView(), 1f);
         playerView.setFullscreenButtonClickListener(isFullscreen -> setRequestedOrientation(
                 isFullscreen ? ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
                         : ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED));
@@ -206,8 +211,10 @@ public class PlayerActivity extends AppCompatActivity {
         Bg.run(() -> {
             final StreamingService service = NewPipe.getServiceByUrl(url);
             final StreamInfo info = StreamInfo.getInfo(service, url);
-            final MediaSource source = resolver.resolve(info, MAX_HEIGHT, audioOnly);
-            return new Object[]{info, source};
+            final Subtitles.Option sub = Subtitles.pick(info,
+                    Subtitles.mode(PlayerActivity.this));
+            final MediaSource source = resolver.resolve(info, MAX_HEIGHT, audioOnly, sub);
+            return new Object[]{info, source, sub};
         }, new Bg.Callback<Object[]>() {
             @Override
             public void onResult(final Object[] r) {
@@ -223,6 +230,8 @@ public class PlayerActivity extends AppCompatActivity {
                 PlayerService.nowThumbnail = Images.best(info.getThumbnails());
                 showInfo(info);
 
+                currentSubtitle = (Subtitles.Option) r[2];
+                Subtitles.select(player, currentSubtitle);
                 player.setMediaSource((MediaSource) r[1]);
                 player.prepare();
                 player.play();
@@ -291,7 +300,7 @@ public class PlayerActivity extends AppCompatActivity {
         audioButton.setText(audioOnly ? R.string.video_mode : R.string.audio_only);
         final long position = player.getCurrentPosition();
         final StreamInfo info = currentInfo;
-        Bg.run(() -> resolver.resolve(info, MAX_HEIGHT, audioOnly),
+        Bg.run(() -> resolver.resolve(info, MAX_HEIGHT, audioOnly, currentSubtitle),
                 new Bg.Callback<MediaSource>() {
                     @Override
                     public void onResult(final MediaSource source) {
@@ -330,6 +339,35 @@ public class PlayerActivity extends AppCompatActivity {
                 .putExtra(Intent.EXTRA_SUBJECT, info.getName())
                 .putExtra(Intent.EXTRA_TEXT, info.getUrl());
         startActivity(Intent.createChooser(send, getString(R.string.share)));
+    }
+
+    // ---------- Legendas ----------
+
+    private void chooseSubtitle() {
+        final StreamInfo info = currentInfo;
+        if (info == null) {
+            return;
+        }
+        Subtitles.showMenu(this, info, currentSubtitle, chosen -> {
+            currentSubtitle = chosen;
+            final long position = player.getCurrentPosition();
+            Bg.run(() -> resolver.resolve(info, MAX_HEIGHT, audioOnly, chosen),
+                    new Bg.Callback<MediaSource>() {
+                        @Override
+                        public void onResult(final MediaSource source) {
+                            Subtitles.select(player, chosen);
+                            player.setMediaSource(source, position);
+                            player.prepare();
+                            player.play();
+                        }
+
+                        @Override
+                        public void onError(final Throwable error) {
+                            Toast.makeText(PlayerActivity.this, Images.errorMessage(error),
+                                    Toast.LENGTH_LONG).show();
+                        }
+                    });
+        });
     }
 
     // ---------- Favoritos ----------
