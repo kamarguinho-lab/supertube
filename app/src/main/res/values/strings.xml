@@ -93,4 +93,7 @@
     <string name="quality_advanced">Avançado</string>
     <string name="quality_advanced_desc">Selecione uma resolução específica</string>
     <string name="movies_all">Todos os filmes</string>
+    <string name="audio_dub">Áudio / Dublagem</string>
+    <string name="audio_dub_short">Áudio</string>
+    <string name="audio_dub_none">Este vídeo só tem o áudio original. A dublagem aparece aqui quando o YouTube oferece outros idiomas para o vídeo.</string>
 </resources>

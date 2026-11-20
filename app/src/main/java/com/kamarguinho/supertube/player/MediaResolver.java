@@ -51,6 +51,13 @@ public final class MediaResolver {
     /** Resolução do vídeo escolhido na última vez (0 = só áudio / desconhecida). */
     public volatile int lastHeight = 0;
 
+    /** Faixa de áudio escolhida para o vídeo atual (null = automática). */
+    public volatile String audioTrackId = null;
+    /** Idioma de áudio preferido ("original", "pt"...). */
+    public volatile String audioLanguage = AudioTracks.PREF_ORIGINAL;
+    /** Faixa de áudio usada na última vez. */
+    public volatile AudioTracks.Track lastTrack = null;
+
     public MediaResolver(final Context context) {
         generic = new DefaultDataSource.Factory(context,
                 new DefaultHttpDataSource.Factory().setUserAgent(DownloaderImpl.USER_AGENT));
@@ -109,7 +116,8 @@ public final class MediaResolver {
         }
 
         lastHeight = 0;
-        final AudioStream audio = pickAudio(info.getAudioStreams());
+        final AudioStream audio = pickAudioFor(info.getAudioStreams());
+        lastTrack = audio != null ? AudioTracks.of(audio) : null;
 
         if (audioOnly && audio != null) {
             return source(audio, info, youtube);
@@ -218,6 +226,39 @@ public final class MediaResolver {
             }
         }
         return best;
+    }
+
+    /** Escolhe a faixa: a pedida para este vídeo, ou o idioma preferido, ou a original. */
+    @Nullable
+    private AudioStream pickAudioFor(@Nullable final List<AudioStream> list) {
+        if (list == null) {
+            return null;
+        }
+        final String id = audioTrackId;
+        if (id != null) {
+            final List<AudioStream> same = new java.util.ArrayList<>();
+            for (final AudioStream a : list) {
+                if (id.equals(a.getAudioTrackId())) {
+                    same.add(a);
+                }
+            }
+            if (!same.isEmpty()) {
+                return pickAudio(same);
+            }
+        }
+        final String lang = audioLanguage;
+        if (lang != null && !AudioTracks.PREF_ORIGINAL.equals(lang)) {
+            final List<AudioStream> inLang = new java.util.ArrayList<>();
+            for (final AudioStream a : list) {
+                if (lang.equals(AudioTracks.language(a))) {
+                    inLang.add(a);
+                }
+            }
+            if (!inLang.isEmpty()) {
+                return pickAudio(inLang);
+            }
+        }
+        return pickAudio(list);
     }
 
     /** Áudio original (não dublado) com maior qualidade, preferindo M4A. */

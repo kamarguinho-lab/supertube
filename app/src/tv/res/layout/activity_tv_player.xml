@@ -146,6 +146,10 @@
                     layout="@layout/tv_action" />
 
                 <include
+                    android:id="@+id/action_audio"
+                    layout="@layout/tv_action" />
+
+                <include
                     android:id="@+id/action_quality"
                     layout="@layout/tv_action" />
 

@@ -30,6 +30,7 @@ import com.kamarguinho.supertube.R;
 import com.kamarguinho.supertube.data.Favorites;
 import com.kamarguinho.supertube.data.History;
 import com.kamarguinho.supertube.data.Subscriptions;
+import com.kamarguinho.supertube.player.AudioTracks;
 import com.kamarguinho.supertube.player.MediaResolver;
 import com.kamarguinho.supertube.player.Quality;
 import com.kamarguinho.supertube.player.RelatedPlayer;
@@ -76,6 +77,7 @@ public class TvPlayerActivity extends AppCompatActivity {
     private View actionNext;
     private View actionSubtitles;
     private View actionQuality;
+    private View actionAudio;
     private Subtitles.Option currentSubtitle;
     private View panelBox;
     private View panelScrim;
@@ -171,6 +173,8 @@ public class TvPlayerActivity extends AppCompatActivity {
         }
         saveProgress();
         exactHeight = 0;
+        resolver.audioTrackId = null;
+        resolver.audioLanguage = AudioTracks.preferred(this);
         final int t = ++token;
         hidePanel();
         rowsAdapter.clear();
@@ -217,6 +221,7 @@ public class TvPlayerActivity extends AppCompatActivity {
                 Subtitles.select(player, currentSubtitle);
                 playingHeight = resolver.lastHeight;
                 updateQualityLabel();
+                updateAudioLabel();
                 // Continua de onde parou e grava no histórico
                 final long resume = History.resumePosition(TvPlayerActivity.this, url);
                 History.record(TvPlayerActivity.this, current);
@@ -289,6 +294,10 @@ public class TvPlayerActivity extends AppCompatActivity {
         setAction(actionQuality, R.drawable.ic_settings, R.string.quality);
         TvAdapters.focusZoom(actionQuality, 1.06f);
         actionQuality.setOnClickListener(v -> chooseQuality());
+        actionAudio = findViewById(R.id.action_audio);
+        setAction(actionAudio, R.drawable.ic_dub, R.string.audio_dub_short);
+        TvAdapters.focusZoom(actionAudio, 1.06f);
+        actionAudio.setOnClickListener(v -> chooseAudio());
 
         setAction(actionChannel, R.drawable.ic_account_outline, R.string.tv_go_channel);
         setAction(actionNext, R.drawable.ic_skip_next, R.string.tv_next);
@@ -464,6 +473,47 @@ public class TvPlayerActivity extends AppCompatActivity {
                         : getString(R.string.quality));
     }
 
+    private void updateAudioLabel() {
+        final boolean many = current != null && AudioTracks.tracks(current).size() > 1;
+        ((TextView) actionAudio.findViewById(R.id.action_label)).setText(many
+                ? getString(R.string.audio_dub_short) + " · "
+                + AudioTracks.shortLabel(resolver.lastTrack)
+                : getString(R.string.audio_dub_short));
+    }
+
+    private void chooseAudio() {
+        final StreamInfo info = current;
+        if (info == null) {
+            return;
+        }
+        AudioTracks.showMenu(this, info, resolver.lastTrack, track -> {
+            resolver.audioTrackId = track.id;
+            resolver.audioLanguage = AudioTracks.preferred(this);
+            final long position = player.getCurrentPosition();
+            final int t = token;
+            Bg.run(() -> resolver.resolve(info, targetHeight(), false, currentSubtitle),
+                    new Bg.Callback<MediaSource>() {
+                        @Override
+                        public void onResult(final MediaSource source) {
+                            if (t != token) {
+                                return;
+                            }
+                            updateAudioLabel();
+                            player.setMediaSource(source, position);
+                            player.prepare();
+                            player.play();
+                            hidePanel();
+                        }
+
+                        @Override
+                        public void onError(final Throwable error) {
+                            Toast.makeText(TvPlayerActivity.this, Images.errorMessage(error),
+                                    Toast.LENGTH_LONG).show();
+                        }
+                    });
+        });
+    }
+
     private void chooseQuality() {
         final StreamInfo info = current;
         if (info == null) {
@@ -570,7 +620,8 @@ public class TvPlayerActivity extends AppCompatActivity {
                 final View focus = getCurrentFocus();
                 final boolean onActions = focus == actionFavorite || focus == actionChannel
                         || focus == actionSubscribe || focus == actionNext
-                        || focus == actionSubtitles || focus == actionQuality;
+                        || focus == actionSubtitles || focus == actionQuality
+                        || focus == actionAudio;
                 if (k == KeyEvent.KEYCODE_DPAD_UP && onActions) {
                     hidePanel();
                     return true;

@@ -45,6 +45,7 @@ import com.kamarguinho.supertube.data.Favorites;
 import com.kamarguinho.supertube.data.History;
 import com.kamarguinho.supertube.data.Subscriptions;
 import com.kamarguinho.supertube.player.MediaResolver;
+import com.kamarguinho.supertube.player.AudioTracks;
 import com.kamarguinho.supertube.player.PlayerService;
 import com.kamarguinho.supertube.player.Quality;
 import com.kamarguinho.supertube.player.RelatedPlayer;
@@ -151,6 +152,7 @@ public class PlayerActivity extends AppCompatActivity {
         findViewById(R.id.share).setOnClickListener(v -> share());
         findViewById(R.id.subtitles).setOnClickListener(v -> chooseSubtitle());
         findViewById(R.id.quality).setOnClickListener(v -> chooseQuality());
+        findViewById(R.id.audio_dub).setOnClickListener(v -> chooseAudio());
         uploaderAvatar = findViewById(R.id.uploader_avatar);
         subscribeButton = findViewById(R.id.subscribe);
         audioButton = findViewById(R.id.audio_only);
@@ -238,6 +240,8 @@ public class PlayerActivity extends AppCompatActivity {
     private void load(final String url) {
         saveProgress();
         exactHeight = 0;
+        resolver.audioTrackId = null;
+        resolver.audioLanguage = AudioTracks.preferred(this);
         final int token = ++loadToken;
         progress.setVisibility(View.VISIBLE);
         title.setText("");
@@ -275,6 +279,7 @@ public class PlayerActivity extends AppCompatActivity {
                 Subtitles.select(player, currentSubtitle);
                 playingHeight = resolver.lastHeight;
                 updateQualityLabel();
+                updateAudioLabel();
                 // Continua de onde parou e grava no histórico
                 final long resume = History.resumePosition(PlayerActivity.this, url);
                 History.record(PlayerActivity.this, info);
@@ -534,6 +539,45 @@ public class PlayerActivity extends AppCompatActivity {
                                 }
                             });
                 });
+    }
+
+    // ---------- Áudio / Dublagem ----------
+
+    private void updateAudioLabel() {
+        final AudioTracks.Track t = resolver.lastTrack;
+        final boolean many = currentInfo != null && AudioTracks.tracks(currentInfo).size() > 1;
+        ((com.google.android.material.button.MaterialButton) findViewById(R.id.audio_dub))
+                .setText(many ? getString(R.string.audio_dub_short) + " · "
+                        + AudioTracks.shortLabel(t) : getString(R.string.audio_dub_short));
+    }
+
+    private void chooseAudio() {
+        final StreamInfo info = currentInfo;
+        if (info == null) {
+            return;
+        }
+        AudioTracks.showMenu(this, info, resolver.lastTrack, track -> {
+            resolver.audioTrackId = track.id;
+            resolver.audioLanguage = AudioTracks.preferred(this);
+            final long position = player.getCurrentPosition();
+            final boolean playing = player.getPlayWhenReady();
+            Bg.run(() -> resolver.resolve(info, targetHeight(), audioOnly, currentSubtitle),
+                    new Bg.Callback<MediaSource>() {
+                        @Override
+                        public void onResult(final MediaSource source) {
+                            updateAudioLabel();
+                            player.setMediaSource(source, position);
+                            player.prepare();
+                            player.setPlayWhenReady(playing);
+                        }
+
+                        @Override
+                        public void onError(final Throwable error) {
+                            Toast.makeText(PlayerActivity.this, Images.errorMessage(error),
+                                    Toast.LENGTH_LONG).show();
+                        }
+                    });
+        });
     }
 
     // ---------- Legendas ----------
