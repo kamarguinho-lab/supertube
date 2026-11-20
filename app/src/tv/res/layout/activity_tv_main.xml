@@ -1,68 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background"
-    android:orientation="horizontal">
+    android:background="@color/background">
 
-    <!-- Menu lateral: busca no topo, depois as seções -->
-    <LinearLayout
-        android:id="@+id/rail"
-        android:layout_width="72dp"
-        android:layout_height="match_parent"
-        android:background="@color/background"
-        android:orientation="vertical"
-        android:paddingHorizontal="12dp"
-        android:paddingTop="28dp">
-
-        <ImageView
-            android:id="@+id/rail_logo"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
-            android:layout_marginStart="8dp"
-            android:layout_marginBottom="28dp"
-            android:contentDescription="@null"
-            android:src="@drawable/ic_logo" />
-
-        <include
-            android:id="@+id/rail_search"
-            layout="@layout/tv_rail_item" />
-
-        <include
-            android:id="@+id/rail_home"
-            layout="@layout/tv_rail_item" />
-
-        <include
-            android:id="@+id/rail_subs"
-            layout="@layout/tv_rail_item" />
-
-        <include
-            android:id="@+id/rail_favs"
-            layout="@layout/tv_rail_item" />
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1" />
-
-        <include
-            android:id="@+id/rail_update"
-            layout="@layout/tv_rail_item" />
-
-        <TextView
-            android:id="@+id/rail_version"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="20dp"
-            android:gravity="center"
-            android:textColor="@color/text_secondary"
-            android:textSize="10sp" />
-    </LinearLayout>
-
+    <!-- Conteúdo (fica atrás do menu, que abre por cima como no YouTube) -->
     <FrameLayout
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_weight="1">
+        android:layout_marginStart="72dp">
 
         <!-- Início -->
         <LinearLayout
@@ -183,6 +129,26 @@
                 android:textSize="26sp"
                 android:textStyle="bold" />
 
+            <LinearLayout
+                android:id="@+id/list_actions"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="32dp"
+                android:layout_marginTop="12dp"
+                android:orientation="horizontal"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/history_clear"
+                    style="@style/TvPill"
+                    android:text="@string/history_clear" />
+
+                <TextView
+                    android:id="@+id/history_pause"
+                    style="@style/TvPill"
+                    android:text="@string/history_pause" />
+            </LinearLayout>
+
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/channels"
                 android:layout_width="match_parent"
@@ -200,6 +166,17 @@
                 android:paddingHorizontal="24dp"
                 android:paddingBottom="48dp" />
         </LinearLayout>
+
+        <!-- Você: Histórico e Favoritos em fileiras -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/section_you"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipChildren="false"
+            android:clipToPadding="false"
+            android:paddingTop="24dp"
+            android:paddingBottom="48dp"
+            android:visibility="gone" />
 
         <TextView
             android:id="@+id/message"
@@ -220,4 +197,88 @@
             android:indeterminateTint="@color/brand"
             android:visibility="gone" />
     </FrameLayout>
-</LinearLayout>
+
+    <!-- Escurece o conteúdo quando o menu abre -->
+    <View
+        android:id="@+id/rail_scrim"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:alpha="0"
+        android:background="@drawable/tv_rail_scrim" />
+
+    <!-- Menu lateral -->
+    <LinearLayout
+        android:id="@+id/rail"
+        android:layout_width="72dp"
+        android:layout_height="match_parent"
+        android:background="@color/background"
+        android:orientation="vertical"
+        android:paddingHorizontal="12dp"
+        android:paddingTop="28dp">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_marginBottom="32dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_logo" />
+
+            <TextView
+                android:id="@+id/rail_brand"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:fontFamily="sans-serif-condensed"
+                android:text="@string/app_name"
+                android:textColor="@color/text_primary"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <include
+            android:id="@+id/rail_search"
+            layout="@layout/tv_rail_item" />
+
+        <include
+            android:id="@+id/rail_home"
+            layout="@layout/tv_rail_item" />
+
+        <include
+            android:id="@+id/rail_subs"
+            layout="@layout/tv_rail_item" />
+
+        <include
+            android:id="@+id/rail_history"
+            layout="@layout/tv_rail_item" />
+
+        <include
+            android:id="@+id/rail_you"
+            layout="@layout/tv_rail_item" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <include
+            android:id="@+id/rail_update"
+            layout="@layout/tv_rail_item" />
+
+        <TextView
+            android:id="@+id/rail_version"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="20dp"
+            android:gravity="center"
+            android:textColor="@color/text_secondary"
+            android:textSize="10sp" />
+    </LinearLayout>
+</FrameLayout>

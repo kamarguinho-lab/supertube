@@ -62,7 +62,7 @@ public final class Favorites {
     }
 
     /** Usa o ID do vídeo como chave, para não duplicar links diferentes do mesmo vídeo. */
-    static String key(final String url) {
+    public static String key(final String url) {
         final Matcher m = YT_ID.matcher(url);
         return m.find() ? "yt:" + m.group(1) : url;
     }

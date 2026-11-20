@@ -21,6 +21,19 @@
             android:contentDescription="@null"
             android:scaleType="centerCrop" />
 
+        <ProgressBar
+            android:id="@+id/watch_progress"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="4dp"
+            android:layout_gravity="bottom"
+            android:layout_marginHorizontal="3dp"
+            android:layout_marginBottom="3dp"
+            android:max="1000"
+            android:progressBackgroundTint="#99717171"
+            android:progressTint="#FF0000"
+            android:visibility="gone" />
+
         <TextView
             android:id="@+id/duration"
             android:layout_width="wrap_content"

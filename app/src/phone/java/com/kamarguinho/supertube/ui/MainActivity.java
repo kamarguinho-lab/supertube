@@ -42,6 +42,7 @@ import com.google.android.material.chip.ChipGroup;
 import com.kamarguinho.supertube.R;
 import com.kamarguinho.supertube.data.Favorites;
 import com.kamarguinho.supertube.data.Feed;
+import com.kamarguinho.supertube.data.History;
 import com.kamarguinho.supertube.data.Movies;
 import com.kamarguinho.supertube.data.Importer;
 import com.kamarguinho.supertube.data.Subscriptions;
@@ -107,6 +108,9 @@ public class MainActivity extends AppCompatActivity {
     private boolean feedMode = false;
     private boolean favMode = false;
     private boolean accountMode = false;
+    private boolean historyMode = false;
+    private final ItemAdapter historyAdapter = new ItemAdapter();
+    private View historyHeader;
 
     private View accountPanel;
     private ProgressBar importProgress;
@@ -157,6 +161,31 @@ public class MainActivity extends AppCompatActivity {
         importProgress = findViewById(R.id.import_progress);
         importStatus = findViewById(R.id.import_status);
         findViewById(R.id.google_login).setOnClickListener(v -> googleLogin());
+        historyHeader = findViewById(R.id.history_header);
+        findViewById(R.id.open_history).setOnClickListener(v -> showHistory());
+        findViewById(R.id.open_favorites).setOnClickListener(v ->
+                nav.setSelectedItemId(R.id.nav_favorites));
+        final com.google.android.material.button.MaterialButton pauseButton =
+                findViewById(R.id.history_pause);
+        pauseButton.setOnClickListener(v -> {
+            final boolean paused = !History.isPaused(this);
+            History.setPaused(this, paused);
+            pauseButton.setText(paused ? R.string.history_resume : R.string.history_pause);
+            if (paused) {
+                android.widget.Toast.makeText(this, R.string.history_paused_msg,
+                        android.widget.Toast.LENGTH_LONG).show();
+            }
+        });
+        findViewById(R.id.history_clear).setOnClickListener(v ->
+                new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                        .setTitle(R.string.history_clear)
+                        .setMessage(R.string.history_clear_confirm)
+                        .setPositiveButton(R.string.history_clear, (d, w) -> {
+                            History.clear(this);
+                            showHistory();
+                        })
+                        .setNegativeButton(android.R.string.cancel, null)
+                        .show());
         findViewById(R.id.update_app).setOnClickListener(v ->
                 com.kamarguinho.supertube.update.Updater.checkAndPrompt(this, false));
         ((TextView) findViewById(R.id.version_text)).setText(getString(R.string.version_label,
@@ -176,7 +205,9 @@ public class MainActivity extends AppCompatActivity {
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
-                if (searchOpen) {
+                if (historyMode) {
+                    showAccount();
+                } else if (searchOpen) {
                     closeSearch();
                 } else if (nav.getSelectedItemId() != R.id.nav_search) {
                     nav.setSelectedItemId(R.id.nav_search);
@@ -198,7 +229,7 @@ public class MainActivity extends AppCompatActivity {
         list.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(@NonNull final RecyclerView rv, final int dx, final int dy) {
-                if (!feedMode && !favMode && !accountMode && dy > 0
+                if (!feedMode && !favMode && !accountMode && !historyMode && dy > 0
                         && lm.findLastVisibleItemPosition() >= searchAdapter.getItemCount() - 4) {
                     loadMore();
                 }
@@ -296,6 +327,29 @@ public class MainActivity extends AppCompatActivity {
             showFeed();
         } else if (favMode) {
             showFavorites();
+        } else if (historyMode) {
+            showHistory();
+        } else if (searchAdapter.getItemCount() > 0) {
+            // atualiza as barras vermelhas de progresso
+            searchAdapter.notifyDataSetChanged();
+        }
+    }
+
+    // ---------- Histórico ----------
+
+    private void showHistory() {
+        resetModes();
+        historyMode = true;
+        historyHeader.setVisibility(View.VISIBLE);
+        ((com.google.android.material.button.MaterialButton) findViewById(R.id.history_pause))
+                .setText(History.isPaused(this) ? R.string.history_resume
+                        : R.string.history_pause);
+        list.setAdapter(historyAdapter);
+        final List<StreamInfoItem> items = History.asItems(this);
+        historyAdapter.set(items);
+        if (items.isEmpty()) {
+            message.setText(R.string.history_empty);
+            message.setVisibility(View.VISIBLE);
         }
     }
 
@@ -304,6 +358,8 @@ public class MainActivity extends AppCompatActivity {
         feedMode = false;
         favMode = false;
         accountMode = false;
+        historyMode = false;
+        historyHeader.setVisibility(View.GONE);
         accountPanel.setVisibility(View.GONE);
         swipe.setVisibility(View.VISIBLE);
         channelsRow.setVisibility(View.GONE);
@@ -504,7 +560,7 @@ public class MainActivity extends AppCompatActivity {
                         return;
                     }
                     searchAdapter.set(result);
-                    if (feedMode || favMode || accountMode) {
+                    if (feedMode || favMode || accountMode || historyMode) {
                         return;
                     }
                     progress.setVisibility(View.GONE);
@@ -516,7 +572,7 @@ public class MainActivity extends AppCompatActivity {
 
                 @Override
                 public void onError(final Throwable error) {
-                    if (token != searchToken || feedMode || favMode || accountMode) {
+                    if (token != searchToken || feedMode || favMode || accountMode || historyMode) {
                         return;
                     }
                     progress.setVisibility(View.GONE);
@@ -541,7 +597,7 @@ public class MainActivity extends AppCompatActivity {
                 final SearchInfo info = (SearchInfo) r[1];
                 nextPage = info.getNextPage();
                 searchAdapter.set(info.getRelatedItems());
-                if (feedMode || favMode || accountMode) {
+                if (feedMode || favMode || accountMode || historyMode) {
                     return;
                 }
                 progress.setVisibility(View.GONE);
@@ -553,7 +609,7 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onError(final Throwable error) {
-                if (token != searchToken || feedMode || favMode || accountMode) {
+                if (token != searchToken || feedMode || favMode || accountMode || historyMode) {
                     return;
                 }
                 progress.setVisibility(View.GONE);

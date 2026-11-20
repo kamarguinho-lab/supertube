@@ -128,6 +128,7 @@ final class TvAdapters {
             final TextView duration;
             final TextView title;
             final TextView subtitle;
+            final android.widget.ProgressBar watched;
             final boolean grid;
 
             Holder(final View v, final boolean grid) {
@@ -138,6 +139,7 @@ final class TvAdapters {
                 duration = v.findViewById(R.id.duration);
                 title = v.findViewById(R.id.title);
                 subtitle = v.findViewById(R.id.subtitle);
+                watched = v.findViewById(R.id.watch_progress);
             }
 
             void bind(final StreamInfoItem item) {
@@ -182,6 +184,12 @@ final class TvAdapters {
                                 new RoundedCorners(radius)))
                         .placeholder(R.drawable.tv_thumb_placeholder)
                         .into(thumb);
+
+                // Barra vermelha: quanto deste vídeo já foi assistido
+                final float p = com.kamarguinho.supertube.data.History.progress(ctx,
+                        item.getUrl());
+                watched.setVisibility(p > 0.01f ? View.VISIBLE : View.GONE);
+                watched.setProgress((int) (p * 1000));
 
                 itemView.setOnClickListener(v -> TvPlayerActivity.open(ctx, item.getUrl()));
                 itemView.setOnLongClickListener(v -> {

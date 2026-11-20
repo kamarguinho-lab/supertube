@@ -32,6 +32,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.kamarguinho.supertube.R;
 import com.kamarguinho.supertube.data.Favorites;
 import com.kamarguinho.supertube.data.Feed;
+import com.kamarguinho.supertube.data.History;
 import com.kamarguinho.supertube.data.Movies;
 import com.kamarguinho.supertube.data.Subscriptions;
 import com.kamarguinho.supertube.util.Bg;
@@ -54,7 +55,8 @@ public class TvMainActivity extends AppCompatActivity {
     private static final int SECTION_SEARCH = 0;
     private static final int SECTION_HOME = 1;
     private static final int SECTION_SUBS = 2;
-    private static final int SECTION_FAVS = 3;
+    private static final int SECTION_HISTORY = 3;
+    private static final int SECTION_YOU = 4;
 
     private static final int GRID_COLUMNS = 4;
 
@@ -92,7 +94,7 @@ public class TvMainActivity extends AppCompatActivity {
     private final Handler handler = new Handler(Looper.getMainLooper());
 
     private LinearLayout rail;
-    private final View[] railItems = new View[4];
+    private final View[] railItems = new View[5];
     private int section = SECTION_HOME;
 
     private View homeSection;
@@ -120,6 +122,10 @@ public class TvMainActivity extends AppCompatActivity {
 
     // Inscrições / Favoritos
     private TextView listTitle;
+    private View listActions;
+    private TextView historyPause;
+    private RecyclerView youSection;
+    private final TvAdapters.RowsAdapter youRows = new TvAdapters.RowsAdapter();
     private RecyclerView channelsList;
     private RecyclerView listGrid;
     private final TvAdapters.VideoAdapter listAdapter = new TvAdapters.VideoAdapter(true);
@@ -181,17 +187,23 @@ public class TvMainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        if (section == SECTION_FAVS) {
-            showFavorites();
+        // Volta do player: atualiza histórico e barras de progresso
+        if (section == SECTION_HISTORY) {
+            showHistory();
+        } else if (section == SECTION_YOU) {
+            showYou();
+        } else if (section == SECTION_SUBS) {
+            listAdapter.notifyDataSetChanged();
         }
     }
 
     // ================= Menu lateral =================
 
     private void setupRail() {
-        final int[] ids = {R.id.rail_search, R.id.rail_home, R.id.rail_subs, R.id.rail_favs};
+        final int[] ids = {R.id.rail_search, R.id.rail_home, R.id.rail_subs,
+                R.id.rail_history, R.id.rail_you};
         final int[] labels = {R.string.search, R.string.tab_search, R.string.tab_subscriptions,
-                R.string.tab_favorites};
+                R.string.history, R.string.tab_you};
         for (int i = 0; i < ids.length; i++) {
             final View item = findViewById(ids[i]);
             railItems[i] = item;
@@ -248,9 +260,14 @@ public class TvMainActivity extends AppCompatActivity {
         railExpanded = expanded;
         final float d = getResources().getDisplayMetrics().density;
         final ViewGroup.LayoutParams lp = rail.getLayoutParams();
-        lp.width = (int) ((expanded ? 220 : 72) * d);
+        lp.width = (int) ((expanded ? 260 : 72) * d);
         rail.setLayoutParams(lp);
-        rail.setElevation(expanded ? 16 * d : 0);
+        // O menu abre por cima do conteúdo, que fica escurecido (como no YouTube)
+        rail.setBackgroundColor(expanded ? 0x00000000 : getColor(R.color.background));
+        findViewById(R.id.rail_scrim).animate().alpha(expanded ? 1f : 0f)
+                .setDuration(180).start();
+        findViewById(R.id.rail_brand).setVisibility(expanded ? View.VISIBLE : View.GONE);
+        findViewById(R.id.rail_version).setVisibility(expanded ? View.VISIBLE : View.INVISIBLE);
         for (final View item : railItems) {
             item.findViewById(R.id.rail_label).setVisibility(expanded ? View.VISIBLE : View.GONE);
         }
@@ -263,7 +280,8 @@ public class TvMainActivity extends AppCompatActivity {
                 {R.drawable.ic_search, R.drawable.ic_search},
                 {R.drawable.ic_home_outline, R.drawable.ic_home_filled},
                 {R.drawable.ic_subscriptions_outline, R.drawable.ic_subscriptions_filled},
-                {R.drawable.ic_favorite_outline, R.drawable.ic_favorite_filled},
+                {R.drawable.ic_history, R.drawable.ic_history},
+                {R.drawable.ic_account_outline, R.drawable.ic_account_filled},
         };
         for (int i = 0; i < railItems.length; i++) {
             final boolean active = i == section;
@@ -278,8 +296,9 @@ public class TvMainActivity extends AppCompatActivity {
         updateRailIcons();
         homeSection.setVisibility(s == SECTION_HOME ? View.VISIBLE : View.GONE);
         searchSection.setVisibility(s == SECTION_SEARCH ? View.VISIBLE : View.GONE);
-        listSection.setVisibility(s == SECTION_SUBS || s == SECTION_FAVS
+        listSection.setVisibility(s == SECTION_SUBS || s == SECTION_HISTORY
                 ? View.VISIBLE : View.GONE);
+        youSection.setVisibility(s == SECTION_YOU ? View.VISIBLE : View.GONE);
         message.setVisibility(View.GONE);
         progress.setVisibility(View.GONE);
 
@@ -292,8 +311,11 @@ public class TvMainActivity extends AppCompatActivity {
             case SECTION_SUBS:
                 showSubscriptions();
                 break;
-            case SECTION_FAVS:
-                showFavorites();
+            case SECTION_HISTORY:
+                showHistory();
+                break;
+            case SECTION_YOU:
+                showYou();
                 break;
             default:
                 break;
@@ -311,7 +333,17 @@ public class TvMainActivity extends AppCompatActivity {
                 case SECTION_HOME:
                     chips.get(chipSelected).requestFocus();
                     break;
+                case SECTION_YOU:
+                    if (youSection.getChildCount() > 0) {
+                        youSection.getChildAt(0).requestFocus();
+                    }
+                    break;
                 default:
+                    if (listActions.getVisibility() == View.VISIBLE
+                            && listGrid.getChildCount() == 0) {
+                        listActions.getChildAt(0).requestFocus();
+                        break;
+                    }
                     if (channelsList.getVisibility() == View.VISIBLE
                             && channelsList.getChildCount() > 0) {
                         channelsList.getChildAt(0).requestFocus();
@@ -576,10 +608,85 @@ public class TvMainActivity extends AppCompatActivity {
         listGrid = findViewById(R.id.list_grid);
         listGrid.setLayoutManager(new GridLayoutManager(this, GRID_COLUMNS));
         listGrid.setAdapter(listAdapter);
+
+        listActions = findViewById(R.id.list_actions);
+        historyPause = findViewById(R.id.history_pause);
+        findViewById(R.id.history_clear).setOnClickListener(v ->
+                new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                        .setTitle(R.string.history_clear)
+                        .setMessage(R.string.history_clear_confirm)
+                        .setPositiveButton(R.string.history_clear, (d, w) -> {
+                            History.clear(this);
+                            Toast.makeText(this, R.string.history_cleared,
+                                    Toast.LENGTH_SHORT).show();
+                            showHistory();
+                        })
+                        .setNegativeButton(android.R.string.cancel, null)
+                        .show());
+        historyPause.setOnClickListener(v -> {
+            final boolean paused = !History.isPaused(this);
+            History.setPaused(this, paused);
+            if (paused) {
+                Toast.makeText(this, R.string.history_paused_msg, Toast.LENGTH_LONG).show();
+            }
+            updatePauseLabel();
+        });
+
+        youSection = findViewById(R.id.section_you);
+        youSection.setLayoutManager(new LinearLayoutManager(this));
+        youSection.setItemAnimator(null);
+        youSection.setAdapter(youRows);
+    }
+
+    private void updatePauseLabel() {
+        historyPause.setText(History.isPaused(this) ? R.string.history_resume
+                : R.string.history_pause);
+    }
+
+    private void showHistory() {
+        listTitle.setText(R.string.history);
+        channelsList.setVisibility(View.GONE);
+        listActions.setVisibility(View.VISIBLE);
+        updatePauseLabel();
+        final List<StreamInfoItem> items = History.asItems(this);
+        listAdapter.set(items);
+        if (items.isEmpty()) {
+            message.setText(R.string.history_empty);
+            message.setVisibility(View.VISIBLE);
+        } else {
+            message.setVisibility(View.GONE);
+        }
+    }
+
+    /** Você: fileiras de Histórico e Favoritos, como a Biblioteca do YouTube. */
+    private void showYou() {
+        final List<TvAdapters.Row> rows = new ArrayList<>();
+        final List<StreamInfoItem> history = History.asItems(this);
+        if (!history.isEmpty()) {
+            final TvAdapters.Row row = new TvAdapters.Row(getString(R.string.history));
+            row.adapter.set(history.subList(0, Math.min(40, history.size())));
+            row.loading = false;
+            rows.add(row);
+        }
+        final List<StreamInfoItem> favs = new Favorites(this).asItems();
+        if (!favs.isEmpty()) {
+            final TvAdapters.Row row = new TvAdapters.Row(getString(R.string.tab_favorites));
+            row.adapter.set(favs);
+            row.loading = false;
+            rows.add(row);
+        }
+        youRows.set(rows);
+        if (rows.isEmpty()) {
+            message.setText(R.string.tv_no_favorites);
+            message.setVisibility(View.VISIBLE);
+        } else {
+            message.setVisibility(View.GONE);
+        }
     }
 
     private void showSubscriptions() {
         listTitle.setText(R.string.tab_subscriptions);
+        listActions.setVisibility(View.GONE);
         final List<Subscriptions.Channel> channels = new Subscriptions(this).all();
         channelAdapter.set(channels);
         channelsList.setVisibility(channels.isEmpty() ? View.GONE : View.VISIBLE);
@@ -613,19 +720,6 @@ public class TvMainActivity extends AppCompatActivity {
                 }
             }
         });
-    }
-
-    private void showFavorites() {
-        listTitle.setText(R.string.tab_favorites);
-        channelsList.setVisibility(View.GONE);
-        final List<StreamInfoItem> items = new Favorites(this).asItems();
-        listAdapter.set(items);
-        if (items.isEmpty()) {
-            message.setText(R.string.tv_no_favorites);
-            message.setVisibility(View.VISIBLE);
-        } else {
-            message.setVisibility(View.GONE);
-        }
     }
 
     private void showError(final Throwable error) {

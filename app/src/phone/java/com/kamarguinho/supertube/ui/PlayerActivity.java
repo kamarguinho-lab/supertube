@@ -42,6 +42,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.kamarguinho.supertube.R;
 import com.kamarguinho.supertube.data.Downloads;
 import com.kamarguinho.supertube.data.Favorites;
+import com.kamarguinho.supertube.data.History;
 import com.kamarguinho.supertube.data.Subscriptions;
 import com.kamarguinho.supertube.player.MediaResolver;
 import com.kamarguinho.supertube.player.PlayerService;
@@ -90,6 +91,14 @@ public class PlayerActivity extends AppCompatActivity {
     private int loadToken = 0;
 
     private final Player.Listener errorListener = new Player.Listener() {
+        @Override
+        public void onPlaybackStateChanged(final int state) {
+            if (state == Player.STATE_ENDED && currentInfo != null) {
+                History.savePosition(PlayerActivity.this, currentInfo.getUrl(),
+                        currentInfo.getDuration() * 1000);
+            }
+        }
+
         @Override
         public void onPlayerError(@NonNull final PlaybackException error) {
             Toast.makeText(PlayerActivity.this,
@@ -197,6 +206,7 @@ public class PlayerActivity extends AppCompatActivity {
     }
 
     private void load(final String url) {
+        saveProgress();
         final int token = ++loadToken;
         progress.setVisibility(View.VISIBLE);
         title.setText("");
@@ -232,7 +242,14 @@ public class PlayerActivity extends AppCompatActivity {
 
                 currentSubtitle = (Subtitles.Option) r[2];
                 Subtitles.select(player, currentSubtitle);
-                player.setMediaSource((MediaSource) r[1]);
+                // Continua de onde parou e grava no histórico
+                final long resume = History.resumePosition(PlayerActivity.this, url);
+                History.record(PlayerActivity.this, info);
+                if (resume > 0) {
+                    player.setMediaSource((MediaSource) r[1], resume);
+                } else {
+                    player.setMediaSource((MediaSource) r[1]);
+                }
                 player.prepare();
                 player.play();
                 PlayerService.start(PlayerActivity.this);
@@ -504,6 +521,18 @@ public class PlayerActivity extends AppCompatActivity {
             ((LinearLayout.LayoutParams) lp).weight = landscape ? 1 : 0;
         }
         playerView.setLayoutParams(lp);
+    }
+
+    private void saveProgress() {
+        if (currentInfo != null && player.getPlaybackState() != Player.STATE_IDLE) {
+            History.savePosition(this, currentInfo.getUrl(), player.getCurrentPosition());
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        saveProgress();
+        super.onPause();
     }
 
     @Override

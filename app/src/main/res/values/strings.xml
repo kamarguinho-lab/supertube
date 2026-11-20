@@ -73,4 +73,13 @@
     <string name="subtitles">Legendas</string>
     <string name="subtitles_off">Desativadas</string>
     <string name="subtitles_none">Este vídeo não tem legendas.</string>
+    <string name="history">Histórico</string>
+    <string name="history_clear">Limpar histórico</string>
+    <string name="history_pause">Pausar histórico</string>
+    <string name="history_resume">Retomar histórico</string>
+    <string name="history_empty">Nenhum vídeo assistido ainda.</string>
+    <string name="history_cleared">Histórico apagado</string>
+    <string name="history_paused_msg">Histórico pausado: os vídeos assistidos não serão guardados.</string>
+    <string name="history_clear_confirm">Apagar todo o histórico de visualização deste aparelho?</string>
+    <string name="tab_you">Você</string>
 </resources>

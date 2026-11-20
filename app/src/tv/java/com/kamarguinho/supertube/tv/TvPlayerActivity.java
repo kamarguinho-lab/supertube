@@ -28,6 +28,7 @@ import com.google.android.exoplayer2.source.MediaSource;
 import com.google.android.exoplayer2.ui.StyledPlayerView;
 import com.kamarguinho.supertube.R;
 import com.kamarguinho.supertube.data.Favorites;
+import com.kamarguinho.supertube.data.History;
 import com.kamarguinho.supertube.data.Subscriptions;
 import com.kamarguinho.supertube.player.MediaResolver;
 import com.kamarguinho.supertube.player.Subtitles;
@@ -111,6 +112,10 @@ public class TvPlayerActivity extends AppCompatActivity {
             @Override
             public void onPlaybackStateChanged(final int state) {
                 if (state == Player.STATE_ENDED) {
+                    if (current != null) {
+                        History.savePosition(TvPlayerActivity.this, current.getUrl(),
+                                current.getDuration() * 1000);
+                    }
                     playNext();
                 }
             }
@@ -148,6 +153,7 @@ public class TvPlayerActivity extends AppCompatActivity {
             finish();
             return;
         }
+        saveProgress();
         final int t = ++token;
         hidePanel();
         rowsAdapter.clear();
@@ -191,7 +197,14 @@ public class TvPlayerActivity extends AppCompatActivity {
                 buildPanelRows(current, t);
                 currentSubtitle = (Subtitles.Option) r[2];
                 Subtitles.select(player, currentSubtitle);
-                player.setMediaSource((MediaSource) r[1]);
+                // Continua de onde parou e grava no histórico
+                final long resume = History.resumePosition(TvPlayerActivity.this, url);
+                History.record(TvPlayerActivity.this, current);
+                if (resume > 0) {
+                    player.setMediaSource((MediaSource) r[1], resume);
+                } else {
+                    player.setMediaSource((MediaSource) r[1]);
+                }
                 player.prepare();
                 player.play();
             }
@@ -559,8 +572,15 @@ public class TvPlayerActivity extends AppCompatActivity {
         return super.dispatchKeyEvent(event);
     }
 
+    private void saveProgress() {
+        if (current != null && player != null && player.getPlaybackState() != Player.STATE_IDLE) {
+            History.savePosition(this, current.getUrl(), player.getCurrentPosition());
+        }
+    }
+
     @Override
     protected void onStop() {
+        saveProgress();
         super.onStop();
         player.pause();
     }

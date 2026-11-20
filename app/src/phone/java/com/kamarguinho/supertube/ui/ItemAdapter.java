@@ -93,6 +93,7 @@ public class ItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         final ImageView thumb;
         final ImageView avatar;
         final TextView duration;
+        final android.widget.ProgressBar watched;
         final TextView title;
         final TextView subtitle;
 
@@ -100,6 +101,7 @@ public class ItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             super(v);
             thumb = v.findViewById(R.id.thumb);
             avatar = v.findViewById(R.id.avatar);
+            watched = v.findViewById(R.id.watch_progress);
             duration = v.findViewById(R.id.duration);
             title = v.findViewById(R.id.title);
             subtitle = v.findViewById(R.id.subtitle);
@@ -153,6 +155,10 @@ public class ItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
             Glide.with(ctx).load(Images.best(item.getThumbnails()))
                     .placeholder(R.color.thumb_placeholder).into(thumb);
+
+            final float p = com.kamarguinho.supertube.data.History.progress(ctx, item.getUrl());
+            watched.setVisibility(p > 0.01f ? View.VISIBLE : View.GONE);
+            watched.setProgress((int) (p * 1000));
 
             itemView.setOnClickListener(v -> PlayerActivity.open(ctx, item.getUrl()));
             itemView.setOnLongClickListener(v -> {
