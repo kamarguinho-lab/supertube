@@ -68,6 +68,75 @@
             android:textSize="13sp" />
     </LinearLayout>
 
+    <!-- Painel que aparece com a seta para baixo: ações e vídeos relacionados -->
+    <LinearLayout
+        android:id="@+id/panel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:background="@drawable/tv_bottom_gradient"
+        android:clipChildren="false"
+        android:orientation="vertical"
+        android:paddingTop="64dp"
+        android:paddingBottom="24dp"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingHorizontal="40dp">
+
+            <include
+                android:id="@+id/action_favorite"
+                layout="@layout/tv_action" />
+
+            <include
+                android:id="@+id/action_channel"
+                layout="@layout/tv_action" />
+
+            <include
+                android:id="@+id/action_subscribe"
+                layout="@layout/tv_action" />
+
+            <include
+                android:id="@+id/action_next"
+                layout="@layout/tv_action" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="40dp"
+            android:layout_marginTop="20dp"
+            android:text="@string/tv_related"
+            android:textColor="@color/text_primary"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/related"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:clipChildren="false"
+            android:clipToPadding="false"
+            android:paddingHorizontal="32dp"
+            android:paddingVertical="6dp" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/down_hint"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="8dp"
+        android:shadowColor="#000000"
+        android:shadowRadius="4"
+        android:text="@string/tv_down_hint"
+        android:textColor="@color/text_secondary"
+        android:textSize="13sp"
+        android:visibility="gone" />
+
     <ProgressBar
         android:id="@+id/progress"
         android:layout_width="64dp"

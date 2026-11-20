@@ -47,8 +47,12 @@
     <string name="tv_no_voice">Esta TV não tem pesquisa por voz. Use o teclado da tela.</string>
     <string name="tv_no_subscriptions">Você ainda não segue nenhum canal.\n\nSegure o botão OK num vídeo para abrir o canal e toque em Inscrever-se.</string>
     <string name="tv_no_favorites">Nenhum favorito ainda.\n\nDurante um vídeo, aperte o botão Menu do controle para favoritar.</string>
-    <string name="tv_hint">Menu: favoritar</string>
-    <string name="tv_hint_favorited">♥ Favorito • Menu: remover</string>
+    <string name="tv_hint">▼ para mais opções</string>
+    <string name="tv_hint_favorited">♥ Nos favoritos</string>
     <string name="tv_favorited">Adicionado aos favoritos</string>
     <string name="tv_unfavorited">Removido dos favoritos</string>
+    <string name="tv_related">A seguir</string>
+    <string name="tv_down_hint">▼ Mais vídeos e opções</string>
+    <string name="tv_go_channel">Ir ao canal</string>
+    <string name="tv_next">Próximo</string>
 </resources>
