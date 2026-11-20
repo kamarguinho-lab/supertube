@@ -221,5 +221,12 @@ public final class History {
             return;
         }
         prefs(c).edit().putString(KEY, array.toString()).apply();
+        com.kamarguinho.supertube.sync.Sync.changed(c,
+                com.kamarguinho.supertube.sync.Sync.HISTORY);
+    }
+
+    /** Descarta o cache (quando o histórico chega de outro aparelho). */
+    public static synchronized void invalidate() {
+        cache = null;
     }
 }

@@ -172,6 +172,8 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.google_login).setOnClickListener(v -> googleLogin());
         historyHeader = findViewById(R.id.history_header);
         findViewById(R.id.open_history).setOnClickListener(v -> showHistory());
+        findViewById(R.id.open_playlists).setOnClickListener(v -> showPlaylists());
+        setupAccount();
         findViewById(R.id.open_favorites).setOnClickListener(v ->
                 nav.setSelectedItemId(R.id.nav_favorites));
         final com.google.android.material.button.MaterialButton pauseButton =
@@ -362,6 +364,8 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        // Puxa as mudanças feitas na TV (ou em outro celular)
+        syncNow(false);
         if (feedMode) {
             showFeed();
         } else if (favMode) {
@@ -371,6 +375,203 @@ public class MainActivity extends AppCompatActivity {
         } else if (searchAdapter.getItemCount() > 0) {
             // atualiza as barras vermelhas de progresso
             searchAdapter.notifyDataSetChanged();
+        }
+    }
+
+    // ---------- Playlists ----------
+
+    private void showPlaylists() {
+        final com.kamarguinho.supertube.data.Playlists store =
+                new com.kamarguinho.supertube.data.Playlists(this);
+        final List<com.kamarguinho.supertube.data.Playlists.Playlist> lists = store.all();
+        final String[] names = new String[lists.size() + 1];
+        names[0] = getString(R.string.playlist_new);
+        for (int i = 0; i < lists.size(); i++) {
+            names[i + 1] = lists.get(i).name + "  ("
+                    + getString(R.string.playlist_videos, lists.get(i).videos.size()) + ")";
+        }
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.playlists)
+                .setItems(names, (d, which) -> {
+                    if (which == 0) {
+                        com.kamarguinho.supertube.data.PlaylistUi.askName(this, null, name -> {
+                            final com.kamarguinho.supertube.data.Playlists.Playlist p =
+                                    store.create(name);
+                            PlaylistActivity.open(this, p.id);
+                        });
+                    } else {
+                        PlaylistActivity.open(this, lists.get(which - 1).id);
+                    }
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    // ---------- Conta SuperTube ----------
+
+    private void setupAccount() {
+        findViewById(R.id.account_login).setOnClickListener(v -> loginDialog(false));
+        findViewById(R.id.account_create).setOnClickListener(v -> loginDialog(true));
+        findViewById(R.id.account_logout).setOnClickListener(v -> {
+            com.kamarguinho.supertube.sync.Account.signOut(this);
+            updateAccountUi();
+        });
+        findViewById(R.id.account_sync).setOnClickListener(v -> syncNow(true));
+        findViewById(R.id.account_tv).setOnClickListener(v -> connectTvDialog());
+        findViewById(R.id.account_forgot).setOnClickListener(v -> {
+            final EditText input = new EditText(this);
+            input.setHint(R.string.account_email);
+            input.setInputType(android.text.InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
+                    | android.text.InputType.TYPE_CLASS_TEXT);
+            new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                    .setTitle(R.string.account_forgot)
+                    .setView(padded(input))
+                    .setPositiveButton(android.R.string.ok, (d, w) -> Bg.run(() -> {
+                        com.kamarguinho.supertube.sync.Account.resetPassword(
+                                input.getText().toString());
+                        return true;
+                    }, toastCallback(getString(R.string.account_reset_sent))))
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .show();
+        });
+        com.kamarguinho.supertube.sync.Sync.setListener(this::refreshAfterSync);
+        updateAccountUi();
+    }
+
+    private View padded(final View v) {
+        final android.widget.LinearLayout box = new android.widget.LinearLayout(this);
+        box.setOrientation(android.widget.LinearLayout.VERTICAL);
+        final int pad = (int) (20 * getResources().getDisplayMetrics().density);
+        box.setPadding(pad, pad / 2, pad, 0);
+        box.addView(v);
+        return box;
+    }
+
+    private <T> Bg.Callback<T> toastCallback(final String okMessage) {
+        return new Bg.Callback<T>() {
+            @Override
+            public void onResult(final T result) {
+                android.widget.Toast.makeText(MainActivity.this, okMessage,
+                        android.widget.Toast.LENGTH_LONG).show();
+                updateAccountUi();
+            }
+
+            @Override
+            public void onError(final Throwable error) {
+                android.widget.Toast.makeText(MainActivity.this, error.getMessage(),
+                        android.widget.Toast.LENGTH_LONG).show();
+            }
+        };
+    }
+
+    private void updateAccountUi() {
+        final boolean configured = com.kamarguinho.supertube.sync.Account.configured();
+        final boolean in = com.kamarguinho.supertube.sync.Account.loggedIn(this);
+        final TextView status = findViewById(R.id.account_status);
+        if (!configured) {
+            status.setText(R.string.account_not_configured);
+        } else if (in) {
+            status.setText(getString(R.string.account_connected,
+                    com.kamarguinho.supertube.sync.Account.email(this)));
+        } else {
+            status.setText(R.string.account_desc);
+        }
+        findViewById(R.id.account_out_box).setVisibility(configured && !in
+                ? View.VISIBLE : View.GONE);
+        findViewById(R.id.account_in_box).setVisibility(in ? View.VISIBLE : View.GONE);
+        findViewById(R.id.account_forgot).setVisibility(configured && !in
+                ? View.VISIBLE : View.GONE);
+        findViewById(R.id.account_logout).setVisibility(in ? View.VISIBLE : View.GONE);
+    }
+
+    private void loginDialog(final boolean create) {
+        final EditText email = new EditText(this);
+        email.setHint(R.string.account_email);
+        email.setInputType(android.text.InputType.TYPE_CLASS_TEXT
+                | android.text.InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS);
+        final EditText password = new EditText(this);
+        password.setHint(R.string.account_password);
+        password.setInputType(android.text.InputType.TYPE_CLASS_TEXT
+                | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        final android.widget.LinearLayout box = (android.widget.LinearLayout) padded(email);
+        box.addView(password);
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                .setTitle(create ? R.string.account_create : R.string.account_login)
+                .setView(box)
+                .setPositiveButton(android.R.string.ok, (d, w) -> {
+                    final String e = email.getText().toString();
+                    final String pw = password.getText().toString();
+                    Bg.run(() -> {
+                        if (create) {
+                            com.kamarguinho.supertube.sync.Account.signUp(this, e, pw);
+                        } else {
+                            com.kamarguinho.supertube.sync.Account.signIn(this, e, pw);
+                        }
+                        return true;
+                    }, new Bg.Callback<Boolean>() {
+                        @Override
+                        public void onResult(final Boolean ok) {
+                            updateAccountUi();
+                            syncNow(true);
+                        }
+
+                        @Override
+                        public void onError(final Throwable error) {
+                            android.widget.Toast.makeText(MainActivity.this, error.getMessage(),
+                                    android.widget.Toast.LENGTH_LONG).show();
+                        }
+                    });
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private void connectTvDialog() {
+        final EditText code = new EditText(this);
+        code.setHint(R.string.account_tv_code_hint);
+        code.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.account_connect_tv)
+                .setView(padded(code))
+                .setPositiveButton(android.R.string.ok, (d, w) -> Bg.run(() -> {
+                    com.kamarguinho.supertube.sync.Account.approveTv(this,
+                            code.getText().toString());
+                    return true;
+                }, toastCallback(getString(R.string.account_tv_connected))))
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private void syncNow(final boolean showToast) {
+        com.kamarguinho.supertube.sync.Sync.syncAll(this, new Bg.Callback<Integer>() {
+            @Override
+            public void onResult(final Integer received) {
+                if (showToast && com.kamarguinho.supertube.sync.Account.loggedIn(
+                        MainActivity.this)) {
+                    android.widget.Toast.makeText(MainActivity.this, R.string.account_synced,
+                            android.widget.Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onError(final Throwable error) {
+                if (showToast) {
+                    android.widget.Toast.makeText(MainActivity.this, error.getMessage(),
+                            android.widget.Toast.LENGTH_LONG).show();
+                }
+            }
+        });
+    }
+
+    /** Chegaram dados de outro aparelho: atualiza a tela aberta. */
+    private void refreshAfterSync() {
+        feedCache = null;
+        if (feedMode) {
+            showFeed();
+        } else if (favMode) {
+            showFavorites();
+        } else if (historyMode) {
+            showHistory();
         }
     }
 

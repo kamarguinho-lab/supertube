@@ -47,9 +47,11 @@ public final class Favorites {
     private static final Pattern YT_ID = Pattern.compile("(?:v=|youtu\\.be/|shorts/)([\\w-]{11})");
 
     private final SharedPreferences prefs;
+    private final Context context;
 
     public Favorites(final Context context) {
-        prefs = context.getApplicationContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        this.context = context.getApplicationContext();
+        prefs = this.context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
     }
 
     /** Link padrão do YouTube a partir do ID de 11 letras. */
@@ -169,5 +171,7 @@ public final class Favorites {
             return;
         }
         prefs.edit().putString(KEY, array.toString()).apply();
+        com.kamarguinho.supertube.sync.Sync.changed(context,
+                com.kamarguinho.supertube.sync.Sync.FAVORITES);
     }
 }

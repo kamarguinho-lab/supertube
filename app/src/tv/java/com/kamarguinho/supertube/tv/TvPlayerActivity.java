@@ -314,6 +314,17 @@ public class TvPlayerActivity extends AppCompatActivity {
         downHint = findViewById(R.id.down_hint);
         actionFavorite = findViewById(R.id.action_favorite);
         actionChannel = findViewById(R.id.action_channel);
+        final View actionSave = findViewById(R.id.action_save);
+        setAction(actionSave, R.drawable.ic_playlist_add, R.string.playlist_save);
+        TvAdapters.focusZoom(actionSave, 1.06f);
+        actionSave.setOnClickListener(v -> {
+            if (current != null) {
+                com.kamarguinho.supertube.data.PlaylistUi.saveTo(this,
+                        new Favorites.Video(current.getServiceId(), current.getUrl(),
+                                current.getName(), current.getUploaderName(),
+                                Images.best(current.getThumbnails())), null);
+            }
+        });
         actionSubscribe = findViewById(R.id.action_subscribe);
         actionNext = findViewById(R.id.action_next);
         actionSubtitles = findViewById(R.id.action_subtitles);
@@ -649,6 +660,7 @@ public class TvPlayerActivity extends AppCompatActivity {
                 }
                 final View focus = getCurrentFocus();
                 final boolean onActions = focus == actionFavorite || focus == actionChannel
+                        || (focus != null && focus.getId() == R.id.action_save)
                         || focus == actionSubscribe || focus == actionNext
                         || focus == actionSubtitles || focus == actionQuality
                         || focus == actionAudio;

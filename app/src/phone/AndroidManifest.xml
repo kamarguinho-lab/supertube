@@ -52,6 +52,10 @@
             android:name=".ui.SeriesActivity"
             android:exported="false" />
 
+        <activity
+            android:name=".ui.PlaylistActivity"
+            android:exported="false" />
+
         <service
             android:name=".player.PlayerService"
             android:exported="false"

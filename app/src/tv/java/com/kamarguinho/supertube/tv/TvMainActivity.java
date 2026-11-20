@@ -200,6 +200,8 @@ public class TvMainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        // Puxa as mudanças feitas no celular
+        syncNow(false);
         // Volta do player: atualiza histórico e barras de progresso
         if (section == SECTION_HISTORY) {
             showHistory();
@@ -311,7 +313,8 @@ public class TvMainActivity extends AppCompatActivity {
         searchSection.setVisibility(s == SECTION_SEARCH ? View.VISIBLE : View.GONE);
         listSection.setVisibility(s == SECTION_SUBS || s == SECTION_HISTORY
                 ? View.VISIBLE : View.GONE);
-        youSection.setVisibility(s == SECTION_YOU ? View.VISIBLE : View.GONE);
+        findViewById(R.id.section_you_box).setVisibility(s == SECTION_YOU
+                ? View.VISIBLE : View.GONE);
         message.setVisibility(View.GONE);
         progress.setVisibility(View.GONE);
 
@@ -347,9 +350,7 @@ public class TvMainActivity extends AppCompatActivity {
                     chips.get(chipSelected).requestFocus();
                     break;
                 case SECTION_YOU:
-                    if (youSection.getChildCount() > 0) {
-                        youSection.getChildAt(0).requestFocus();
-                    }
+                    findViewById(R.id.you_login).requestFocus();
                     break;
                 default:
                     if (listActions.getVisibility() == View.VISIBLE
@@ -689,6 +690,16 @@ public class TvMainActivity extends AppCompatActivity {
         youSection.setLayoutManager(new LinearLayoutManager(this));
         youSection.setItemAnimator(null);
         youSection.setAdapter(youRows);
+        findViewById(R.id.you_login).setOnClickListener(v -> {
+            if (com.kamarguinho.supertube.sync.Account.loggedIn(this)) {
+                com.kamarguinho.supertube.sync.Account.signOut(this);
+                showYou();
+            } else {
+                pairDialog();
+            }
+        });
+        findViewById(R.id.you_sync).setOnClickListener(v -> syncNow(true));
+        com.kamarguinho.supertube.sync.Sync.setListener(this::refreshAfterSync);
     }
 
     private void updatePauseLabel() {
@@ -712,9 +723,185 @@ public class TvMainActivity extends AppCompatActivity {
         }
     }
 
-    /** Você: fileiras de Histórico e Favoritos, como a Biblioteca do YouTube. */
+    // ================= Conta =================
+
+    private void updateAccountHeader() {
+        final TextView account = findViewById(R.id.you_account);
+        final TextView login = findViewById(R.id.you_login);
+        final boolean in = com.kamarguinho.supertube.sync.Account.loggedIn(this);
+        if (!com.kamarguinho.supertube.sync.Account.configured()) {
+            account.setText(R.string.account_not_configured);
+            login.setVisibility(View.GONE);
+        } else if (in) {
+            account.setText(getString(R.string.account_connected,
+                    com.kamarguinho.supertube.sync.Account.email(this)));
+            login.setText(R.string.account_logout);
+            login.setVisibility(View.VISIBLE);
+        } else {
+            account.setText(R.string.account_desc);
+            login.setText(R.string.account_login);
+            login.setVisibility(View.VISIBLE);
+        }
+        findViewById(R.id.you_sync).setVisibility(in ? View.VISIBLE : View.GONE);
+    }
+
+    /** Mostra o código de 6 números e espera o celular aprovar. */
+    private void pairDialog() {
+        final TextView code = new TextView(this);
+        code.setTextSize(56);
+        code.setTextColor(getColor(R.color.text_primary));
+        code.setGravity(android.view.Gravity.CENTER);
+        code.setLetterSpacing(0.2f);
+        code.setText("······");
+        final TextView steps = new TextView(this);
+        steps.setText(R.string.tv_login_steps);
+        steps.setTextColor(getColor(R.color.text_secondary));
+        steps.setTextSize(16);
+        final TextView wait = new TextView(this);
+        wait.setText(R.string.tv_login_waiting);
+        wait.setTextColor(getColor(R.color.text_secondary));
+        wait.setGravity(android.view.Gravity.CENTER);
+        final LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        final int pad = (int) (24 * getResources().getDisplayMetrics().density);
+        box.setPadding(pad, pad / 2, pad, 0);
+        box.addView(steps);
+        box.addView(code);
+        box.addView(wait);
+
+        final String[] current = {null};
+        final boolean[] open = {true};
+        final androidx.appcompat.app.AlertDialog dialog =
+                new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                        .setTitle(R.string.tv_login_title)
+                        .setView(box)
+                        .setNegativeButton(android.R.string.cancel, null)
+                        .setOnDismissListener(d -> {
+                            open[0] = false;
+                            if (current[0] != null) {
+                                final String c = current[0];
+                                Bg.run(() -> {
+                                    if (!com.kamarguinho.supertube.sync.Account.loggedIn(
+                                            this)) {
+                                        com.kamarguinho.supertube.sync.Account
+                                                .cancelPairing(this, c);
+                                    }
+                                    return true;
+                                }, new Bg.Callback<Boolean>() {
+                                    @Override
+                                    public void onResult(final Boolean r) {
+                                    }
+
+                                    @Override
+                                    public void onError(final Throwable e) {
+                                    }
+                                });
+                            }
+                        })
+                        .show();
+
+        Bg.run(() -> com.kamarguinho.supertube.sync.Account.startPairing(this),
+                new Bg.Callback<String>() {
+                    @Override
+                    public void onResult(final String c) {
+                        current[0] = c;
+                        code.setText(c.substring(0, 3) + " " + c.substring(3));
+                        poll(c, dialog, open);
+                    }
+
+                    @Override
+                    public void onError(final Throwable error) {
+                        wait.setText(getString(R.string.error_prefix,
+                                Images.errorMessage(error)));
+                    }
+                });
+    }
+
+    private void poll(final String code, final androidx.appcompat.app.AlertDialog dialog,
+                      final boolean[] open) {
+        handler.postDelayed(() -> {
+            if (!open[0]) {
+                return;
+            }
+            Bg.run(() -> com.kamarguinho.supertube.sync.Account.checkPairing(this, code),
+                    new Bg.Callback<Boolean>() {
+                        @Override
+                        public void onResult(final Boolean ok) {
+                            if (ok) {
+                                dialog.dismiss();
+                                Toast.makeText(TvMainActivity.this, getString(
+                                        R.string.tv_login_done,
+                                        com.kamarguinho.supertube.sync.Account.email(
+                                                TvMainActivity.this)),
+                                        Toast.LENGTH_LONG).show();
+                                syncNow(false);
+                                showYou();
+                            } else {
+                                poll(code, dialog, open);
+                            }
+                        }
+
+                        @Override
+                        public void onError(final Throwable error) {
+                            poll(code, dialog, open);
+                        }
+                    });
+        }, 3000);
+    }
+
+    private void syncNow(final boolean toast) {
+        com.kamarguinho.supertube.sync.Sync.syncAll(this, new Bg.Callback<Integer>() {
+            @Override
+            public void onResult(final Integer received) {
+                if (toast) {
+                    Toast.makeText(TvMainActivity.this, R.string.account_synced,
+                            Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onError(final Throwable error) {
+                if (toast) {
+                    Toast.makeText(TvMainActivity.this, Images.errorMessage(error),
+                            Toast.LENGTH_LONG).show();
+                }
+            }
+        });
+    }
+
+    /** Chegaram dados do celular: atualiza a tela aberta. */
+    private void refreshAfterSync() {
+        feedKey = null;
+        homeRowsLoaded = false;
+        if (section == SECTION_YOU) {
+            showYou();
+        } else if (section == SECTION_HISTORY) {
+            showHistory();
+        } else if (section == SECTION_SUBS) {
+            showSubscriptions();
+        }
+    }
+
+    /** Você: conta, playlists, histórico e favoritos, como a Biblioteca do YouTube. */
     private void showYou() {
+        updateAccountHeader();
         final List<TvAdapters.Row> rows = new ArrayList<>();
+        for (final com.kamarguinho.supertube.data.Playlists.Playlist p
+                : new com.kamarguinho.supertube.data.Playlists(this).all()) {
+            if (p.videos.isEmpty()) {
+                continue;
+            }
+            final TvAdapters.Row row = new TvAdapters.Row(p.name);
+            final List<StreamInfoItem> items = p.asItems();
+            row.adapter.set(items);
+            row.loading = false;
+            // Tocando um vídeo da playlist, os próximos seguem em ordem
+            row.adapter.clickOverride = item -> {
+                com.kamarguinho.supertube.player.PlayQueue.set(p.name, items, null);
+                TvPlayerActivity.open(this, item.getUrl());
+            };
+            rows.add(row);
+        }
         final List<StreamInfoItem> history = History.asItems(this);
         if (!history.isEmpty()) {
             final TvAdapters.Row row = new TvAdapters.Row(getString(R.string.history));

@@ -39,6 +39,11 @@ public class ItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     }
 
     OnStreamClick streamClick;
+    OnStreamClick streamLongClick;
+
+    public void setOnStreamLongClick(final OnStreamClick listener) {
+        streamLongClick = listener;
+    }
 
     public void setOnStreamClick(final OnStreamClick listener) {
         streamClick = listener;
@@ -206,7 +211,9 @@ public class ItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                 }
             });
             itemView.setOnLongClickListener(v -> {
-                if (item.getUploaderUrl() != null) {
+                if (owner.streamLongClick != null) {
+                    owner.streamLongClick.onClick(item);
+                } else if (item.getUploaderUrl() != null) {
                     ChannelActivity.open(ctx, item.getServiceId(), item.getUploaderUrl());
                 } else {
                     Toast.makeText(ctx, R.string.no_channel, Toast.LENGTH_SHORT).show();

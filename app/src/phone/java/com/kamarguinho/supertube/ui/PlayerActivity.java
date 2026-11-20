@@ -157,6 +157,15 @@ public class PlayerActivity extends AppCompatActivity {
         findViewById(R.id.subtitles).setOnClickListener(v -> chooseSubtitle());
         findViewById(R.id.quality).setOnClickListener(v -> chooseQuality());
         findViewById(R.id.audio_dub).setOnClickListener(v -> chooseAudio());
+        findViewById(R.id.save_playlist).setOnClickListener(v -> {
+            final StreamInfo info = currentInfo;
+            if (info != null) {
+                com.kamarguinho.supertube.data.PlaylistUi.saveTo(this,
+                        new Favorites.Video(info.getServiceId(), info.getUrl(), info.getName(),
+                                info.getUploaderName(), Images.best(info.getThumbnails())),
+                        null);
+            }
+        });
         uploaderAvatar = findViewById(R.id.uploader_avatar);
         subscribeButton = findViewById(R.id.subscribe);
         audioButton = findViewById(R.id.audio_only);

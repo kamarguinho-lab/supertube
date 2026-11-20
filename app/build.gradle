@@ -15,6 +15,11 @@ android {
         versionCode build
         versionName "1.0.${build}"
         buildConfigField 'String', 'UPDATE_REPO', '"kamarguinho-lab/supertube"'
+        // Projeto Firebase da conta SuperTube (ficam em gradle.properties)
+        buildConfigField 'String', 'FIREBASE_API_KEY',
+                "\"${project.findProperty('firebaseApiKey') ?: ''}\""
+        buildConfigField 'String', 'FIREBASE_DB_URL',
+                "\"${project.findProperty('firebaseDbUrl') ?: ''}\""
     }
 
     // Chave fixa para que cada APK novo instale por cima do antigo

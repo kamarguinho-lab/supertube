@@ -35,9 +35,11 @@ public final class Subscriptions {
     private static final String KEY = "channels";
 
     private final SharedPreferences prefs;
+    private final Context context;
 
     public Subscriptions(final Context context) {
-        prefs = context.getApplicationContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        this.context = context.getApplicationContext();
+        prefs = this.context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
     }
 
     public List<Channel> all() {
@@ -133,5 +135,7 @@ public final class Subscriptions {
             return;
         }
         prefs.edit().putString(KEY, array.toString()).apply();
+        com.kamarguinho.supertube.sync.Sync.changed(context,
+                com.kamarguinho.supertube.sync.Sync.SUBSCRIPTIONS);
     }
 }

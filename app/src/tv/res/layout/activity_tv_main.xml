@@ -168,15 +168,49 @@
         </LinearLayout>
 
         <!-- Você: Histórico e Favoritos em fileiras -->
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/section_you"
+        <LinearLayout
+            android:id="@+id/section_you_box"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:clipChildren="false"
-            android:clipToPadding="false"
+            android:orientation="vertical"
             android:paddingTop="24dp"
-            android:paddingBottom="48dp"
-            android:visibility="gone" />
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingHorizontal="32dp">
+
+                <TextView
+                    android:id="@+id/you_account"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:id="@+id/you_sync"
+                    style="@style/TvPill"
+                    android:text="@string/account_sync_now" />
+
+                <TextView
+                    android:id="@+id/you_login"
+                    style="@style/TvPill"
+                    android:text="@string/account_login" />
+            </LinearLayout>
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/section_you"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_marginTop="8dp"
+                android:clipChildren="false"
+                android:clipToPadding="false"
+                android:paddingBottom="48dp" />
+        </LinearLayout>
 
         <TextView
             android:id="@+id/message"
