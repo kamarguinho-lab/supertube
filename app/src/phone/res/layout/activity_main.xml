@@ -211,6 +211,32 @@
                     android:layout_marginTop="16dp"
                     android:visibility="gone" />
 
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginTop="32dp"
+                    android:background="@color/divider" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/update_app"
+                    style="@style/Pill"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginTop="24dp"
+                    android:text="@string/update_button"
+                    app:cornerRadius="24dp"
+                    app:icon="@drawable/ic_update"
+                    app:iconGravity="textStart" />
+
+                <TextView
+                    android:id="@+id/version_text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:gravity="center"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp" />
+
                 <TextView
                     android:id="@+id/import_status"
                     android:layout_width="match_parent"

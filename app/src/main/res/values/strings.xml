@@ -55,4 +55,16 @@
     <string name="tv_down_hint">▼ Mais vídeos e opções</string>
     <string name="tv_go_channel">Ir ao canal</string>
     <string name="tv_next">Próximo</string>
+    <string name="update_button">Atualizar app</string>
+    <string name="update_title">Atualização</string>
+    <string name="update_checking">Procurando atualização…</string>
+    <string name="update_none">Você já está na versão mais nova (%1$s).</string>
+    <string name="update_available_title">Nova versão disponível</string>
+    <string name="update_available">Sua versão: %1$s\nVersão nova: %2$s\n\nQuer atualizar agora?</string>
+    <string name="update_now">Atualizar</string>
+    <string name="update_later">Agora não</string>
+    <string name="update_downloading">Baixando atualização…</string>
+    <string name="update_error">Não foi possível atualizar.\n\n%1$s</string>
+    <string name="update_allow_install">Permita instalar apps do SuperTube e toque em Atualizar de novo.</string>
+    <string name="version_label">Versão %1$s</string>
 </resources>

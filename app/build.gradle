@@ -10,8 +10,11 @@ android {
         applicationId 'com.kamarguinho.supertube'
         minSdk 24
         targetSdk 35
-        versionCode 1
-        versionName '1.0'
+        // O número do build do GitHub Actions vira a versão (usado pelo botão Atualizar)
+        def build = (System.getenv('GITHUB_RUN_NUMBER') ?: '1').toInteger()
+        versionCode build
+        versionName "1.0.${build}"
+        buildConfigField 'String', 'UPDATE_REPO', '"kamarguinho-lab/supertube"'
     }
 
     // Chave fixa para que cada APK novo instale por cima do antigo
@@ -45,6 +48,10 @@ android {
             applicationIdSuffix '.tv'
             versionNameSuffix '-tv'
         }
+    }
+
+    buildFeatures {
+        buildConfig true
     }
 
     compileOptions {

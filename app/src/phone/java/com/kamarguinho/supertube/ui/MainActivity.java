@@ -156,6 +156,10 @@ public class MainActivity extends AppCompatActivity {
         importProgress = findViewById(R.id.import_progress);
         importStatus = findViewById(R.id.import_status);
         findViewById(R.id.google_login).setOnClickListener(v -> googleLogin());
+        findViewById(R.id.update_app).setOnClickListener(v ->
+                com.kamarguinho.supertube.update.Updater.checkAndPrompt(this, false));
+        ((TextView) findViewById(R.id.version_text)).setText(getString(R.string.version_label,
+                com.kamarguinho.supertube.update.Updater.currentVersion()));
         findViewById(R.id.takeout_import).setOnClickListener(v ->
                 takeoutPicker.launch(new String[]{"application/zip", "text/csv",
                         "text/comma-separated-values", "text/plain",
@@ -271,6 +275,9 @@ public class MainActivity extends AppCompatActivity {
         showSearch();
         lastChipQuery = CATEGORIES[0][1];
         search(lastChipQuery);
+
+        // Procura atualização sozinho (no máximo 2 vezes por dia, sem incomodar)
+        com.kamarguinho.supertube.update.Updater.checkAndPrompt(this, true);
 
         if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(this,
                 Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {

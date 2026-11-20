@@ -172,6 +172,9 @@ public class TvMainActivity extends AppCompatActivity {
         });
 
         showSection(SECTION_HOME);
+
+        // Procura atualização sozinho (no máximo 2 vezes por dia)
+        com.kamarguinho.supertube.update.Updater.checkAndPrompt(this, true);
     }
 
     @Override
@@ -211,6 +214,15 @@ public class TvMainActivity extends AppCompatActivity {
         }
         updateRailIcons();
 
+        // Botão Atualizar, no fim do menu
+        final View update = findViewById(R.id.rail_update);
+        ((ImageView) update.findViewById(R.id.rail_icon)).setImageResource(R.drawable.ic_update);
+        ((TextView) update.findViewById(R.id.rail_label)).setText(R.string.update_button);
+        update.setOnClickListener(v ->
+                com.kamarguinho.supertube.update.Updater.checkAndPrompt(this, false));
+        ((TextView) findViewById(R.id.rail_version)).setText(
+                com.kamarguinho.supertube.update.Updater.currentVersion());
+
         // O menu abre (mostra os nomes) quando recebe o foco e fecha quando sai
         rail.getViewTreeObserver().addOnGlobalFocusChangeListener((oldFocus, newFocus) ->
                 setRailExpanded(newFocus != null && isInside(newFocus, rail)));
@@ -241,6 +253,8 @@ public class TvMainActivity extends AppCompatActivity {
         for (final View item : railItems) {
             item.findViewById(R.id.rail_label).setVisibility(expanded ? View.VISIBLE : View.GONE);
         }
+        findViewById(R.id.rail_update).findViewById(R.id.rail_label)
+                .setVisibility(expanded ? View.VISIBLE : View.GONE);
     }
 
     private void updateRailIcons() {
