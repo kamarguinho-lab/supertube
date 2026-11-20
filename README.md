@@ -14,18 +14,15 @@ App Android para assistir vídeos do YouTube **sem anúncios e sem conta**, no e
 
 Dica: toque e segure um vídeo da lista para abrir o canal.
 
-## Versão para TV
+## Versão para TV (SuperTube TV)
 
-O mesmo APK funciona em **Android TV / Google TV** (TV Box, Chromecast com Google TV, Mi Box, TVs Sony/TCL/Philips com Android).
-Na TV ele abre uma tela própria para controle remoto:
+APK separado, só para **Android TV / Google TV**: `SuperTube-TV.apk`.
 
-- Menu lateral com fileiras: Inscrições, Favoritos e categorias (Em alta, Música, Jogos…)
-- Busca com teclado na tela ou pelo microfone do controle
-- Player em tela cheia; o próximo vídeo começa sozinho
-- Botão **Menu** do controle durante o vídeo: favoritar
-
-Para instalar na TV: instale o app **Downloader** (by AFTVnews) na TV, digite o link do APK
-e instale. Ou copie o APK num pendrive e abra com um gerenciador de arquivos.
+- Menu lateral à esquerda: **Pesquisar** no topo, Início, Inscrições e Favoritos
+- Início com categorias no topo (Tudo, Música, Jogos…) e fileiras de vídeos
+- Busca com sugestões enquanto digita e pesquisa por voz
+- Segure OK num vídeo para abrir o canal e se inscrever
+- Player em tela cheia; o próximo vídeo começa sozinho; botão **Menu** favorita
 
 ## Como instalar
 

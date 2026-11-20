@@ -34,6 +34,19 @@ android {
         }
     }
 
+    // Dois APKs: um para celular e outro só para TV
+    flavorDimensions 'device'
+    productFlavors {
+        phone {
+            dimension 'device'
+        }
+        tv {
+            dimension 'device'
+            applicationIdSuffix '.tv'
+            versionNameSuffix '-tv'
+        }
+    }
+
     compileOptions {
         coreLibraryDesugaringEnabled true
         sourceCompatibility JavaVersion.VERSION_17
@@ -72,10 +85,8 @@ dependencies {
     implementation 'com.google.android.material:material:1.12.0'
     implementation 'com.github.bumptech.glide:glide:4.16.0'
 
-    // Login com a conta Google (só para importar inscrições e curtidos)
-    implementation 'com.google.android.gms:play-services-auth:21.2.0'
     implementation 'androidx.activity:activity:1.9.3'
 
-    // Interface para TV (controle remoto, fileiras de vídeos)
-    implementation 'androidx.leanback:leanback:1.0.0'
+    // Login com a conta Google (só no celular, para importar inscrições e curtidos)
+    phoneImplementation 'com.google.android.gms:play-services-auth:21.2.0'
 }

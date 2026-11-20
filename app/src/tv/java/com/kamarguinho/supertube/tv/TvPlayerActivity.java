@@ -6,13 +6,16 @@ import android.os.Bundle;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.WindowManager;
+import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.fragment.app.FragmentActivity;
+import androidx.appcompat.app.AppCompatActivity;
 
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.request.RequestOptions;
 import com.google.android.exoplayer2.C;
 import com.google.android.exoplayer2.ExoPlayer;
 import com.google.android.exoplayer2.PlaybackException;
@@ -32,18 +35,21 @@ import org.schabi.newpipe.extractor.stream.StreamInfo;
 import org.schabi.newpipe.extractor.stream.StreamInfoItem;
 
 /**
- * Player em tela cheia para a TV. Controle remoto: OK mostra os controles,
- * play/pause do controle funciona, e o próximo vídeo começa sozinho no final.
+ * Player em tela cheia. Controle remoto: OK mostra os controles, play/pause funciona,
+ * Menu favorita, e o próximo vídeo começa sozinho no final.
  */
-public class TvPlayerActivity extends FragmentActivity {
+public class TvPlayerActivity extends AppCompatActivity {
 
     private static final String EXTRA_URL = "url";
     private static final int MAX_HEIGHT = 1080;
 
     private ExoPlayer player;
     private StyledPlayerView playerView;
+    private View overlay;
     private TextView titleView;
+    private TextView subView;
     private TextView hintView;
+    private ImageView avatar;
     private ProgressBar progress;
     private MediaResolver resolver;
     private StreamInfo current;
@@ -61,8 +67,11 @@ public class TvPlayerActivity extends FragmentActivity {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         playerView = findViewById(R.id.player_view);
+        overlay = findViewById(R.id.overlay_top);
         titleView = findViewById(R.id.tv_title);
+        subView = findViewById(R.id.tv_sub);
         hintView = findViewById(R.id.tv_hint);
+        avatar = findViewById(R.id.avatar);
         progress = findViewById(R.id.progress);
         resolver = new MediaResolver(this);
 
@@ -89,10 +98,9 @@ public class TvPlayerActivity extends FragmentActivity {
         });
         playerView.setPlayer(player);
         playerView.setControllerVisibilityListener(
-                (StyledPlayerView.ControllerVisibilityListener) visibility -> {
-                    titleView.setVisibility(visibility);
-                    hintView.setVisibility(visibility);
-                });
+                (StyledPlayerView.ControllerVisibilityListener) visibility ->
+                        overlay.setVisibility(visibility));
+        playerView.requestFocus();
 
         load(getIntent().getStringExtra(EXTRA_URL));
     }
@@ -110,7 +118,9 @@ public class TvPlayerActivity extends FragmentActivity {
         }
         final int t = ++token;
         progress.setVisibility(View.VISIBLE);
+        overlay.setVisibility(View.VISIBLE);
         titleView.setText("");
+        subView.setText("");
         player.stop();
         Bg.run(() -> {
             final StreamInfo info = StreamInfo.getInfo(NewPipe.getServiceByUrl(url), url);
@@ -123,7 +133,20 @@ public class TvPlayerActivity extends FragmentActivity {
                 }
                 progress.setVisibility(View.GONE);
                 current = (StreamInfo) r[0];
-                titleView.setText(current.getName() + "\n" + current.getUploaderName());
+                titleView.setText(current.getName());
+                final StringBuilder sub = new StringBuilder(current.getUploaderName());
+                if (current.getViewCount() >= 0) {
+                    sub.append(" • ").append(TvAdapters.formatCount(current.getViewCount()))
+                            .append(" de visualizações");
+                }
+                if (current.getTextualUploadDate() != null) {
+                    sub.append(" • ").append(current.getTextualUploadDate());
+                }
+                subView.setText(sub);
+                Glide.with(TvPlayerActivity.this)
+                        .load(Images.best(current.getUploaderAvatars()))
+                        .apply(RequestOptions.circleCropTransform())
+                        .placeholder(R.drawable.avatar_placeholder).into(avatar);
                 updateHint();
                 player.setMediaSource((MediaSource) r[1]);
                 player.prepare();
@@ -136,13 +159,12 @@ public class TvPlayerActivity extends FragmentActivity {
                     return;
                 }
                 progress.setVisibility(View.GONE);
-                titleView.setVisibility(View.VISIBLE);
                 titleView.setText(getString(R.string.error_prefix, Images.errorMessage(error)));
             }
         });
     }
 
-    /** No fim do vídeo, toca o primeiro relacionado (como na TV do YouTube). */
+    /** No fim do vídeo, toca o primeiro relacionado (como no YouTube da TV). */
     private void playNext() {
         if (current == null) {
             return;
@@ -160,7 +182,6 @@ public class TvPlayerActivity extends FragmentActivity {
         hintView.setText(fav ? R.string.tv_hint_favorited : R.string.tv_hint);
     }
 
-    /** Tecla de menu ou a tecla "favorito" do controle: favoritar / desfavoritar. */
     @Override
     public boolean onKeyDown(final int keyCode, final KeyEvent event) {
         if ((keyCode == KeyEvent.KEYCODE_MENU || keyCode == KeyEvent.KEYCODE_BOOKMARK

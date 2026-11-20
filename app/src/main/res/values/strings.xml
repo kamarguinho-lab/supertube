@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">SuperTube</string>
+    <string name="app_name_tv">SuperTube TV</string>
     <string name="notification_channel_player">Player</string>
     <string name="search_hint">Pesquisar vídeos</string>
     <string name="search">Pesquisar</string>
@@ -41,9 +42,13 @@
     <string name="views">%1$s de visualizações</string>
     <string name="subs_count">%1$s de inscritos</string>
     <string name="videos">Vídeos</string>
-    <string name="tv_results_for">Resultados para \"%1$s\"</string>
-    <string name="tv_hint">Botão Menu do controle: favoritar</string>
-    <string name="tv_hint_favorited">Nos favoritos • botão Menu remove</string>
+    <string name="tv_new_from_subs">Novos das suas inscrições</string>
+    <string name="tv_voice">Pesquisar por voz</string>
+    <string name="tv_no_voice">Esta TV não tem pesquisa por voz. Use o teclado da tela.</string>
+    <string name="tv_no_subscriptions">Você ainda não segue nenhum canal.\n\nSegure o botão OK num vídeo para abrir o canal e toque em Inscrever-se.</string>
+    <string name="tv_no_favorites">Nenhum favorito ainda.\n\nDurante um vídeo, aperte o botão Menu do controle para favoritar.</string>
+    <string name="tv_hint">Menu: favoritar</string>
+    <string name="tv_hint_favorited">♥ Favorito • Menu: remover</string>
     <string name="tv_favorited">Adicionado aos favoritos</string>
     <string name="tv_unfavorited">Removido dos favoritos</string>
 </resources>
