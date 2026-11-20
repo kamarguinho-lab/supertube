@@ -86,6 +86,10 @@ final class TvAdapters {
             notifyDataSetChanged();
         }
 
+        List<StreamInfoItem> items() {
+            return items;
+        }
+
         void add(final List<StreamInfoItem> list) {
             final int start = items.size();
             items.addAll(list);
@@ -208,6 +212,20 @@ final class TvAdapters {
             rows.clear();
             rows.addAll(list);
             notifyDataSetChanged();
+        }
+
+        void add(final Row row) {
+            rows.add(row);
+            notifyItemInserted(rows.size() - 1);
+        }
+
+        void clear() {
+            rows.clear();
+            notifyDataSetChanged();
+        }
+
+        Row get(final int position) {
+            return rows.get(position);
         }
 
         void loaded(final Row row) {

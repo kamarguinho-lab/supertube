@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
@@ -65,8 +66,16 @@ public class TvPlayerActivity extends AppCompatActivity {
     private View actionChannel;
     private View actionSubscribe;
     private View actionNext;
-    private RecyclerView relatedList;
-    private final TvAdapters.VideoAdapter related = new TvAdapters.VideoAdapter(false);
+    private View panelBox;
+    private View panelScrim;
+    private View actionsRow;
+    private RecyclerView panelRows;
+    private final TvAdapters.RowsAdapter rowsAdapter = new TvAdapters.RowsAdapter();
+    private boolean panelExpanded = false;
+    private boolean loadingMore = false;
+    private int extraRows = 0;
+    private final java.util.Set<String> usedSeeds = new java.util.HashSet<>();
+    private static final int MAX_EXTRA_ROWS = 20;
 
     public static void open(final Context context, final String url) {
         context.startActivity(new Intent(context, TvPlayerActivity.class)
@@ -136,7 +145,10 @@ public class TvPlayerActivity extends AppCompatActivity {
         }
         final int t = ++token;
         hidePanel();
-        related.set(new java.util.ArrayList<>());
+        rowsAdapter.clear();
+        usedSeeds.clear();
+        extraRows = 0;
+        loadingMore = false;
         progress.setVisibility(View.VISIBLE);
         overlay.setVisibility(View.VISIBLE);
         titleView.setText("");
@@ -169,8 +181,7 @@ public class TvPlayerActivity extends AppCompatActivity {
                         .placeholder(R.drawable.avatar_placeholder).into(avatar);
                 updateHint();
                 updateActions();
-                related.set(TvAdapters.streamsOnly(current.getRelatedItems()));
-                relatedList.scrollToPosition(0);
+                buildPanelRows(current, t);
                 player.setMediaSource((MediaSource) r[1]);
                 player.prepare();
                 player.play();
@@ -246,11 +257,154 @@ public class TvPlayerActivity extends AppCompatActivity {
             }
         });
 
-        relatedList = findViewById(R.id.related);
-        relatedList.setLayoutManager(
-                new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
-        relatedList.setItemAnimator(null);
-        relatedList.setAdapter(related);
+        panelBox = findViewById(R.id.panel_box);
+        panelScrim = findViewById(R.id.panel_scrim);
+        actionsRow = findViewById(R.id.actions_row);
+        panelRows = findViewById(R.id.panel_rows);
+        panelRows.setLayoutManager(new LinearLayoutManager(this));
+        panelRows.setItemAnimator(null);
+        panelRows.setAdapter(rowsAdapter);
+
+        // Descendo nas fileiras, o painel cresce até a tela toda e carrega mais fileiras
+        panel.getViewTreeObserver().addOnGlobalFocusChangeListener((oldFocus, newFocus) -> {
+            if (!panelVisible() || newFocus == null) {
+                return;
+            }
+            final RecyclerView.ViewHolder vh = panelRows.findContainingViewHolder(newFocus);
+            if (vh != null) {
+                final int pos = vh.getBindingAdapterPosition();
+                setPanelExpanded(pos >= 1);
+                if (pos >= rowsAdapter.getItemCount() - 2) {
+                    loadMoreRows();
+                }
+            } else {
+                setPanelExpanded(false);
+            }
+        });
+    }
+
+    private void setPanelExpanded(final boolean expanded) {
+        if (expanded == panelExpanded) {
+            return;
+        }
+        panelExpanded = expanded;
+        final float d = getResources().getDisplayMetrics().density;
+        final android.widget.FrameLayout.LayoutParams boxLp =
+                (android.widget.FrameLayout.LayoutParams) panelBox.getLayoutParams();
+        boxLp.height = expanded ? ViewGroup.LayoutParams.MATCH_PARENT
+                : ViewGroup.LayoutParams.WRAP_CONTENT;
+        panelBox.setLayoutParams(boxLp);
+        final android.widget.LinearLayout.LayoutParams rowsLp =
+                (android.widget.LinearLayout.LayoutParams) panelRows.getLayoutParams();
+        rowsLp.height = expanded ? 0 : (int) (270 * d);
+        rowsLp.weight = expanded ? 1 : 0;
+        panelRows.setLayoutParams(rowsLp);
+        panelBox.setPadding(0, (int) ((expanded ? 24 : 64) * d), 0, 0);
+        actionsRow.setVisibility(expanded ? View.GONE : View.VISIBLE);
+        overlay.setVisibility(expanded ? View.GONE : View.VISIBLE);
+        panelScrim.animate().alpha(expanded ? 1f : 0f).setDuration(200).start();
+    }
+
+    /** Primeiras fileiras: A seguir, Mais do canal e Populares. */
+    private void buildPanelRows(final StreamInfo info, final int t) {
+        final TvAdapters.Row next = new TvAdapters.Row(getString(R.string.tv_related));
+        next.adapter.set(TvAdapters.streamsOnly(info.getRelatedItems()));
+        next.loading = false;
+        rowsAdapter.add(next);
+        usedSeeds.add(info.getUrl());
+
+        if (info.getUploaderUrl() != null) {
+            final TvAdapters.Row channelRow = new TvAdapters.Row(
+                    getString(R.string.tv_more_from, info.getUploaderName()));
+            rowsAdapter.add(channelRow);
+            Bg.run(() -> TvAdapters.streamsOnly(com.kamarguinho.supertube.data.Feed
+                            .channelVideos(org.schabi.newpipe.extractor.channel.ChannelInfo
+                                    .getInfo(NewPipe.getService(info.getServiceId()),
+                                            info.getUploaderUrl()))),
+                    rowCallback(channelRow, t));
+        }
+
+        final TvAdapters.Row popular = new TvAdapters.Row(getString(R.string.tv_popular_now));
+        rowsAdapter.add(popular);
+        final org.schabi.newpipe.extractor.StreamingService yt =
+                org.schabi.newpipe.extractor.ServiceList.YouTube;
+        Bg.run(() -> TvAdapters.streamsOnly(org.schabi.newpipe.extractor.search.SearchInfo
+                        .getInfo(yt, yt.getSearchQHFactory().fromQuery("em alta hoje"))
+                        .getRelatedItems()),
+                rowCallback(popular, t));
+    }
+
+    private Bg.Callback<java.util.List<StreamInfoItem>> rowCallback(final TvAdapters.Row row,
+                                                                   final int t) {
+        return new Bg.Callback<java.util.List<StreamInfoItem>>() {
+            @Override
+            public void onResult(final java.util.List<StreamInfoItem> result) {
+                if (t != token) {
+                    return;
+                }
+                row.adapter.set(result);
+                rowsAdapter.loaded(row);
+            }
+
+            @Override
+            public void onError(final Throwable error) {
+                if (t == token) {
+                    rowsAdapter.loaded(row);
+                }
+            }
+        };
+    }
+
+    /**
+     * Fileiras sem fim: pega um vídeo das fileiras de cima que ainda não foi usado
+     * e cria uma fileira "Mais como ..." com os relacionados dele.
+     */
+    private void loadMoreRows() {
+        if (loadingMore || extraRows >= MAX_EXTRA_ROWS) {
+            return;
+        }
+        StreamInfoItem seed = null;
+        for (int r = 0; r < rowsAdapter.getItemCount() && seed == null; r++) {
+            for (final StreamInfoItem item : rowsAdapter.get(r).adapter.items()) {
+                if (!usedSeeds.contains(item.getUrl())) {
+                    seed = item;
+                    break;
+                }
+            }
+        }
+        if (seed == null) {
+            return;
+        }
+        final StreamInfoItem chosen = seed;
+        usedSeeds.add(chosen.getUrl());
+        loadingMore = true;
+        extraRows++;
+        final int t = token;
+        final TvAdapters.Row row = new TvAdapters.Row(
+                getString(R.string.tv_more_like, chosen.getName()));
+        rowsAdapter.add(row);
+        Bg.run(() -> TvAdapters.streamsOnly(StreamInfo.getInfo(
+                        NewPipe.getServiceByUrl(chosen.getUrl()), chosen.getUrl())
+                        .getRelatedItems()),
+                new Bg.Callback<java.util.List<StreamInfoItem>>() {
+                    @Override
+                    public void onResult(final java.util.List<StreamInfoItem> result) {
+                        loadingMore = false;
+                        if (t != token) {
+                            return;
+                        }
+                        row.adapter.set(result);
+                        rowsAdapter.loaded(row);
+                    }
+
+                    @Override
+                    public void onError(final Throwable error) {
+                        loadingMore = false;
+                        if (t == token) {
+                            rowsAdapter.loaded(row);
+                        }
+                    }
+                });
     }
 
     private static void setAction(final View action, final int icon, final int label) {
@@ -324,6 +478,7 @@ public class TvPlayerActivity extends AppCompatActivity {
         if (panel == null || !panelVisible()) {
             return;
         }
+        setPanelExpanded(false);
         panel.setVisibility(View.GONE);
         overlay.setVisibility(View.GONE);
         playerView.setUseController(true);

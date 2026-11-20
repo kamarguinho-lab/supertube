@@ -67,4 +67,7 @@
     <string name="update_error">Não foi possível atualizar.\n\n%1$s</string>
     <string name="update_allow_install">Permita instalar apps do SuperTube e toque em Atualizar de novo.</string>
     <string name="version_label">Versão %1$s</string>
+    <string name="tv_more_from">Mais de %1$s</string>
+    <string name="tv_more_like">Mais como \"%1$s\"</string>
+    <string name="tv_popular_now">Populares agora</string>
 </resources>

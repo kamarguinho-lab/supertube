@@ -68,61 +68,64 @@
             android:textSize="13sp" />
     </LinearLayout>
 
-    <!-- Painel que aparece com a seta para baixo: ações e vídeos relacionados -->
-    <LinearLayout
+    <!-- Painel que aparece com a seta para baixo: ações e fileiras de vídeos sem fim -->
+    <FrameLayout
         android:id="@+id/panel"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom"
-        android:background="@drawable/tv_bottom_gradient"
-        android:clipChildren="false"
-        android:orientation="vertical"
-        android:paddingTop="64dp"
-        android:paddingBottom="24dp"
+        android:layout_height="match_parent"
         android:visibility="gone">
 
+        <View
+            android:id="@+id/panel_scrim"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#F20F0F0F"
+            android:alpha="0" />
+
         <LinearLayout
+            android:id="@+id/panel_box"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:paddingHorizontal="40dp">
-
-            <include
-                android:id="@+id/action_favorite"
-                layout="@layout/tv_action" />
-
-            <include
-                android:id="@+id/action_channel"
-                layout="@layout/tv_action" />
-
-            <include
-                android:id="@+id/action_subscribe"
-                layout="@layout/tv_action" />
-
-            <include
-                android:id="@+id/action_next"
-                layout="@layout/tv_action" />
-        </LinearLayout>
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="40dp"
-            android:layout_marginTop="20dp"
-            android:text="@string/tv_related"
-            android:textColor="@color/text_primary"
-            android:textSize="18sp"
-            android:textStyle="bold" />
-
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/related"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:background="@drawable/tv_bottom_gradient"
             android:clipChildren="false"
-            android:clipToPadding="false"
-            android:paddingHorizontal="32dp"
-            android:paddingVertical="6dp" />
-    </LinearLayout>
+            android:orientation="vertical"
+            android:paddingTop="64dp">
+
+            <LinearLayout
+                android:id="@+id/actions_row"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:paddingHorizontal="40dp"
+                android:paddingBottom="8dp">
+
+                <include
+                    android:id="@+id/action_favorite"
+                    layout="@layout/tv_action" />
+
+                <include
+                    android:id="@+id/action_channel"
+                    layout="@layout/tv_action" />
+
+                <include
+                    android:id="@+id/action_subscribe"
+                    layout="@layout/tv_action" />
+
+                <include
+                    android:id="@+id/action_next"
+                    layout="@layout/tv_action" />
+            </LinearLayout>
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/panel_rows"
+                android:layout_width="match_parent"
+                android:layout_height="270dp"
+                android:clipChildren="false"
+                android:clipToPadding="false"
+                android:paddingBottom="24dp" />
+        </LinearLayout>
+    </FrameLayout>
 
     <TextView
         android:id="@+id/down_hint"
