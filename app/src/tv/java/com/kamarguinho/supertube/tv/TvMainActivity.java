@@ -32,6 +32,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.kamarguinho.supertube.R;
 import com.kamarguinho.supertube.data.Favorites;
 import com.kamarguinho.supertube.data.Feed;
+import com.kamarguinho.supertube.data.Movies;
 import com.kamarguinho.supertube.data.Subscriptions;
 import com.kamarguinho.supertube.util.Bg;
 import com.kamarguinho.supertube.util.Images;
@@ -65,7 +66,7 @@ public class TvMainActivity extends AppCompatActivity {
             {"Notícias", "notícias hoje"},
             {"Ao vivo", "ao vivo agora"},
             {"Podcasts", "podcast"},
-            {"Filmes", "trailer filme"},
+            {"Filmes", Movies.QUERY},
             {"Esportes", "esportes melhores momentos"},
             {"Humor", "humor comédia"},
             {"Infantil", "desenho infantil"},
@@ -81,7 +82,7 @@ public class TvMainActivity extends AppCompatActivity {
             {"Jogos", "games gameplay"},
             {"Notícias", "notícias hoje"},
             {"Podcasts", "podcast"},
-            {"Filmes e trailers", "trailer filme"},
+            {"Filmes completos", Movies.QUERY},
             {"Esportes", "esportes melhores momentos"},
             {"Humor", "humor comédia"},
             {"Tecnologia", "tecnologia review"},
@@ -428,6 +429,9 @@ public class TvMainActivity extends AppCompatActivity {
     }
 
     private List<StreamInfoItem> searchVideos(final String query) throws Exception {
+        if (Movies.QUERY.equals(query)) {
+            return Movies.load(40);
+        }
         return TvAdapters.streamsOnly(SearchInfo.getInfo(yt,
                 yt.getSearchQHFactory().fromQuery(query)).getRelatedItems());
     }

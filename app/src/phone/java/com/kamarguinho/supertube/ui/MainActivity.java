@@ -42,6 +42,7 @@ import com.google.android.material.chip.ChipGroup;
 import com.kamarguinho.supertube.R;
 import com.kamarguinho.supertube.data.Favorites;
 import com.kamarguinho.supertube.data.Feed;
+import com.kamarguinho.supertube.data.Movies;
 import com.kamarguinho.supertube.data.Importer;
 import com.kamarguinho.supertube.data.Subscriptions;
 import com.kamarguinho.supertube.util.Bg;
@@ -79,7 +80,7 @@ public class MainActivity extends AppCompatActivity {
             {"Notícias", "notícias hoje"},
             {"Ao vivo", "ao vivo agora"},
             {"Podcasts", "podcast"},
-            {"Filmes", "trailer filme"},
+            {"Filmes", Movies.QUERY},
             {"Esportes", "esportes melhores momentos"},
             {"Humor", "humor comédia"},
             {"Aprender", "como fazer tutorial"},
@@ -230,6 +231,8 @@ public class MainActivity extends AppCompatActivity {
                 swipe.setRefreshing(false);
                 if (currentQuery != null) {
                     search(currentQuery.getSearchString());
+                } else if (lastChipQuery != null) {
+                    search(lastChipQuery);
                 }
             }
         });
@@ -490,6 +493,40 @@ public class MainActivity extends AppCompatActivity {
         message.setVisibility(View.GONE);
         progress.setVisibility(View.VISIBLE);
         nextPage = null;
+
+        if (Movies.QUERY.equals(q)) {
+            // Categoria Filmes: só filmes completos (mais de 1 hora)
+            currentQuery = null;
+            Bg.run(() -> Movies.load(50), new Bg.Callback<List<StreamInfoItem>>() {
+                @Override
+                public void onResult(final List<StreamInfoItem> result) {
+                    if (token != searchToken) {
+                        return;
+                    }
+                    searchAdapter.set(result);
+                    if (feedMode || favMode || accountMode) {
+                        return;
+                    }
+                    progress.setVisibility(View.GONE);
+                    if (result.isEmpty()) {
+                        message.setText(R.string.no_results);
+                        message.setVisibility(View.VISIBLE);
+                    }
+                }
+
+                @Override
+                public void onError(final Throwable error) {
+                    if (token != searchToken || feedMode || favMode || accountMode) {
+                        return;
+                    }
+                    progress.setVisibility(View.GONE);
+                    message.setText(getString(R.string.error_prefix,
+                            Images.errorMessage(error)));
+                    message.setVisibility(View.VISIBLE);
+                }
+            });
+            return;
+        }
 
         Bg.run(() -> {
             final SearchQueryHandler handler = service.getSearchQHFactory().fromQuery(q);

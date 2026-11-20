@@ -45,7 +45,9 @@ final class TvAdapters {
     static List<StreamInfoItem> streamsOnly(final List<InfoItem> items) {
         final List<StreamInfoItem> out = new ArrayList<>();
         for (final InfoItem i : items) {
-            if (i instanceof StreamInfoItem) {
+            // Na TV não aparecem Shorts (vídeos verticais feitos para celular)
+            if (i instanceof StreamInfoItem
+                    && !com.kamarguinho.supertube.data.Movies.isShort((StreamInfoItem) i)) {
                 out.add((StreamInfoItem) i);
             }
         }
