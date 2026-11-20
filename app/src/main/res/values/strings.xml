@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SuperTube</string>
+    <string name="notification_channel_player">Player</string>
+    <string name="search_hint">Pesquisar vídeos</string>
+    <string name="search">Pesquisar</string>
+    <string name="tab_search">Buscar</string>
+    <string name="tab_subscriptions">Inscrições</string>
+    <string name="search_hint_message">Pesquise qualquer vídeo. Sem anúncios e sem conta.\n\nDica: toque e segure um vídeo para abrir o canal.</string>
+    <string name="no_results">Nada encontrado.</string>
+    <string name="no_subscriptions">Você ainda não segue nenhum canal.\n\nAbra um vídeo e toque em \"Inscrever-se\". As inscrições ficam salvas só no seu celular.</string>
+    <string name="feed_empty">Nenhum vídeo novo. Puxe para baixo para atualizar.</string>
+    <string name="error_prefix">Erro: %1$s</string>
+    <string name="subscribe">Inscrever-se</string>
+    <string name="unsubscribe">Inscrito ✓</string>
+    <string name="subscribed_toast">Canal adicionado às suas inscrições</string>
+    <string name="download">Baixar</string>
+    <string name="download_started">Download iniciado. O arquivo vai para Downloads/SuperTube.</string>
+    <string name="no_download">Este vídeo não tem um formato que dê para baixar.</string>
+    <string name="audio_only">Só áudio</string>
+    <string name="video_mode">Voltar ao vídeo</string>
+    <string name="no_channel">Canal não disponível</string>
+</resources>
