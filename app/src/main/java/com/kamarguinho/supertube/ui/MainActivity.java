@@ -18,6 +18,7 @@ import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.IntentSenderRequest;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -36,6 +37,8 @@ import com.google.android.gms.auth.api.identity.AuthorizationResult;
 import com.google.android.gms.auth.api.identity.Identity;
 import com.google.android.gms.common.api.Scope;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.google.android.material.chip.Chip;
+import com.google.android.material.chip.ChipGroup;
 import com.kamarguinho.supertube.R;
 import com.kamarguinho.supertube.data.Favorites;
 import com.kamarguinho.supertube.data.Feed;
@@ -62,6 +65,27 @@ public class MainActivity extends AppCompatActivity {
     private final StreamingService service = ServiceList.YouTube;
 
     private View searchBar;
+    private View brandBar;
+    private View chipsScroll;
+    private BottomNavigationView nav;
+    private boolean searchOpen = false;
+    private String lastChipQuery = null;
+
+    /** Categorias da tela inicial (nome mostrado, texto pesquisado). */
+    private static final String[][] CATEGORIES = {
+            {"Em alta", "em alta hoje"},
+            {"Música", "música"},
+            {"Jogos", "games gameplay"},
+            {"Notícias", "notícias hoje"},
+            {"Ao vivo", "ao vivo agora"},
+            {"Podcasts", "podcast"},
+            {"Filmes", "trailer filme"},
+            {"Esportes", "esportes melhores momentos"},
+            {"Humor", "humor comédia"},
+            {"Aprender", "como fazer tutorial"},
+            {"Tecnologia", "tecnologia review"},
+            {"Culinária", "receita fácil"},
+    };
     private EditText searchInput;
     private ProgressBar progress;
     private TextView message;
@@ -140,6 +164,22 @@ public class MainActivity extends AppCompatActivity {
                 Intent.ACTION_VIEW, Uri.parse("https://takeout.google.com/"))));
 
         searchBar = findViewById(R.id.search_bar);
+        brandBar = findViewById(R.id.brand_bar);
+        chipsScroll = findViewById(R.id.chips_scroll);
+        findViewById(R.id.open_search).setOnClickListener(v -> openSearch());
+        findViewById(R.id.close_search).setOnClickListener(v -> closeSearch());
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                if (searchOpen) {
+                    closeSearch();
+                } else if (nav.getSelectedItemId() != R.id.nav_search) {
+                    nav.setSelectedItemId(R.id.nav_search);
+                } else {
+                    finish();
+                }
+            }
+        });
         searchInput = findViewById(R.id.search_input);
         progress = findViewById(R.id.progress);
         message = findViewById(R.id.message);
@@ -164,12 +204,12 @@ public class MainActivity extends AppCompatActivity {
                 new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
         channelsRow.setAdapter(channelsAdapter);
 
-        findViewById(R.id.search_button).setOnClickListener(v -> search());
+        findViewById(R.id.search_button).setOnClickListener(v -> searchTyped());
         searchInput.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_SEARCH || (event != null
                     && event.getKeyCode() == KeyEvent.KEYCODE_ENTER
                     && event.getAction() == KeyEvent.ACTION_DOWN)) {
-                search();
+                searchTyped();
                 return true;
             }
             return false;
@@ -185,12 +225,12 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 swipe.setRefreshing(false);
                 if (currentQuery != null) {
-                    search();
+                    search(currentQuery.getSearchString());
                 }
             }
         });
 
-        final BottomNavigationView nav = findViewById(R.id.bottom_nav);
+        nav = findViewById(R.id.bottom_nav);
         nav.setOnItemSelectedListener(item -> {
             if (item.getItemId() == R.id.nav_subscriptions) {
                 showFeed();
@@ -204,8 +244,33 @@ public class MainActivity extends AppCompatActivity {
             return true;
         });
 
-        message.setText(R.string.search_hint_message);
-        message.setVisibility(View.VISIBLE);
+        final ChipGroup chips = findViewById(R.id.chips);
+        for (int i = 0; i < CATEGORIES.length; i++) {
+            final Chip chip = (Chip) LayoutInflater.from(this)
+                    .inflate(R.layout.chip_category, chips, false);
+            chip.setId(View.generateViewId());
+            chip.setText(CATEGORIES[i][0]);
+            chip.setTag(CATEGORIES[i][1]);
+            chips.addView(chip);
+            if (i == 0) {
+                chip.setChecked(true);
+            }
+        }
+        chips.setOnCheckedStateChangeListener((group, ids) -> {
+            if (ids.isEmpty()) {
+                return;
+            }
+            final Chip chip = group.findViewById(ids.get(0));
+            if (chip != null) {
+                closeSearch();
+                lastChipQuery = (String) chip.getTag();
+                search(lastChipQuery);
+            }
+        });
+
+        showSearch();
+        lastChipQuery = CATEGORIES[0][1];
+        search(lastChipQuery);
 
         if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(this,
                 Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
@@ -233,6 +298,8 @@ public class MainActivity extends AppCompatActivity {
         swipe.setVisibility(View.VISIBLE);
         channelsRow.setVisibility(View.GONE);
         searchBar.setVisibility(View.GONE);
+        brandBar.setVisibility(View.VISIBLE);
+        chipsScroll.setVisibility(View.GONE);
         swipe.setRefreshing(false);
         progress.setVisibility(View.GONE);
         message.setVisibility(View.GONE);
@@ -366,7 +433,9 @@ public class MainActivity extends AppCompatActivity {
 
     private void showSearch() {
         resetModes();
-        searchBar.setVisibility(View.VISIBLE);
+        searchBar.setVisibility(searchOpen ? View.VISIBLE : View.GONE);
+        brandBar.setVisibility(searchOpen ? View.GONE : View.VISIBLE);
+        chipsScroll.setVisibility(View.VISIBLE);
         list.setAdapter(searchAdapter);
         if (searchAdapter.getItemCount() == 0) {
             message.setText(R.string.search_hint_message);
@@ -376,11 +445,38 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void search() {
-        final String q = searchInput.getText().toString().trim();
-        if (q.isEmpty()) {
+    private void openSearch() {
+        if (nav.getSelectedItemId() != R.id.nav_search) {
+            nav.setSelectedItemId(R.id.nav_search);
+        }
+        searchOpen = true;
+        brandBar.setVisibility(View.GONE);
+        searchBar.setVisibility(View.VISIBLE);
+        searchInput.requestFocus();
+        final InputMethodManager imm = getSystemService(InputMethodManager.class);
+        if (imm != null) {
+            imm.showSoftInput(searchInput, InputMethodManager.SHOW_IMPLICIT);
+        }
+    }
+
+    private void closeSearch() {
+        if (!searchOpen) {
             return;
         }
+        searchOpen = false;
+        hideKeyboard();
+        searchBar.setVisibility(View.GONE);
+        brandBar.setVisibility(View.VISIBLE);
+    }
+
+    private void searchTyped() {
+        final String q = searchInput.getText().toString().trim();
+        if (!q.isEmpty()) {
+            search(q);
+        }
+    }
+
+    private void search(final String q) {
         hideKeyboard();
         final int token = ++searchToken;
         searchAdapter.clear();

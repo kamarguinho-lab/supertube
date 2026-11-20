@@ -91,6 +91,7 @@ public class ItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     static class StreamHolder extends RecyclerView.ViewHolder {
         final ImageView thumb;
+        final ImageView avatar;
         final TextView duration;
         final TextView title;
         final TextView subtitle;
@@ -98,6 +99,7 @@ public class ItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         StreamHolder(final View v) {
             super(v);
             thumb = v.findViewById(R.id.thumb);
+            avatar = v.findViewById(R.id.avatar);
             duration = v.findViewById(R.id.duration);
             title = v.findViewById(R.id.title);
             subtitle = v.findViewById(R.id.subtitle);
@@ -107,17 +109,41 @@ public class ItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             final Context ctx = itemView.getContext();
             title.setText(item.getName());
 
+            // Miniatura 16:9 ocupando a largura toda, como no YouTube
+            final int width = itemView.getResources().getDisplayMetrics().widthPixels;
+            final ViewGroup.LayoutParams lp = thumb.getLayoutParams();
+            if (lp.height != width * 9 / 16) {
+                lp.height = width * 9 / 16;
+                thumb.setLayoutParams(lp);
+            }
+
             final StringBuilder sub = new StringBuilder();
             if (item.getUploaderName() != null) {
                 sub.append(item.getUploaderName());
             }
             if (item.getViewCount() > 0) {
-                sub.append(" • ").append(formatCount(item.getViewCount())).append(" views");
+                if (sub.length() > 0) {
+                    sub.append(" • ");
+                }
+                sub.append(formatCount(item.getViewCount())).append(" de visualizações");
             }
             if (item.getTextualUploadDate() != null) {
-                sub.append(" • ").append(item.getTextualUploadDate());
+                if (sub.length() > 0) {
+                    sub.append(" • ");
+                }
+                sub.append(item.getTextualUploadDate());
             }
             subtitle.setText(sub);
+
+            final String avatarUrl = Images.best(item.getUploaderAvatars());
+            Glide.with(ctx).load(avatarUrl)
+                    .apply(RequestOptions.circleCropTransform())
+                    .placeholder(R.drawable.avatar_placeholder).into(avatar);
+            avatar.setOnClickListener(v -> {
+                if (item.getUploaderUrl() != null) {
+                    ChannelActivity.open(ctx, item.getServiceId(), item.getUploaderUrl());
+                }
+            });
 
             final boolean live = item.getStreamType() == StreamType.LIVE_STREAM
                     || item.getStreamType() == StreamType.AUDIO_LIVE_STREAM;
@@ -156,7 +182,7 @@ public class ItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             final Context ctx = itemView.getContext();
             name.setText(item.getName());
             info.setText(item.getSubscriberCount() > 0
-                    ? formatCount(item.getSubscriberCount()) + " inscritos" : "Canal");
+                    ? formatCount(item.getSubscriberCount()) + " de inscritos" : "Canal");
             Glide.with(ctx).load(Images.best(item.getThumbnails()))
                     .apply(RequestOptions.circleCropTransform())
                     .placeholder(R.color.thumb_placeholder).into(avatar);
@@ -165,14 +191,22 @@ public class ItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         }
     }
 
+    /** Números no estilo "1,2 mi", "350 mil". */
     static String formatCount(final long n) {
         if (n >= 1_000_000_000L) {
-            return String.format("%.1f bi", n / 1e9);
+            return compact(n / 1e9) + " bi";
         } else if (n >= 1_000_000L) {
-            return String.format("%.1f mi", n / 1e6);
+            return compact(n / 1e6) + " mi";
         } else if (n >= 1_000L) {
-            return String.format("%.1f mil", n / 1e3);
+            return compact(n / 1e3) + " mil";
         }
         return String.valueOf(n);
+    }
+
+    private static String compact(final double v) {
+        if (v >= 100 || Math.abs(v - Math.round(v)) < 0.05) {
+            return String.valueOf(Math.round(v));
+        }
+        return String.format(java.util.Locale.forLanguageTag("pt-BR"), "%.1f", v);
     }
 }

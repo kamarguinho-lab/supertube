@@ -2,6 +2,7 @@ package com.kamarguinho.supertube.ui;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.ColorStateList;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.ImageView;
@@ -9,6 +10,7 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -56,6 +58,9 @@ public class ChannelActivity extends AppCompatActivity {
         final TextView info = findViewById(R.id.info);
         final ProgressBar progress = findViewById(R.id.progress);
         final TextView message = findViewById(R.id.message);
+        final ImageView banner = findViewById(R.id.banner);
+        final TextView topTitle = findViewById(R.id.top_title);
+        findViewById(R.id.back).setOnClickListener(v -> finish());
         subscribeButton = findViewById(R.id.subscribe);
         subscribeButton.setEnabled(false);
 
@@ -82,9 +87,16 @@ public class ChannelActivity extends AppCompatActivity {
                 progress.setVisibility(View.GONE);
                 channel = (ChannelInfo) r[0];
                 name.setText(channel.getName());
+                topTitle.setText(channel.getName());
                 info.setText(channel.getSubscriberCount() > 0
-                        ? ItemAdapter.formatCount(channel.getSubscriberCount()) + " inscritos"
+                        ? getString(R.string.subs_count,
+                        ItemAdapter.formatCount(channel.getSubscriberCount()))
                         : "");
+                final String bannerUrl = Images.best(channel.getBanners());
+                if (bannerUrl != null) {
+                    banner.setVisibility(View.VISIBLE);
+                    Glide.with(ChannelActivity.this).load(bannerUrl).into(banner);
+                }
                 Glide.with(ChannelActivity.this).load(Images.best(channel.getAvatars()))
                         .apply(RequestOptions.circleCropTransform())
                         .placeholder(R.color.thumb_placeholder).into(avatar);
@@ -124,5 +136,9 @@ public class ChannelActivity extends AppCompatActivity {
         final boolean subscribed = channel != null
                 && subscriptions.isSubscribed(channel.getUrl());
         subscribeButton.setText(subscribed ? R.string.unsubscribe : R.string.subscribe);
+        subscribeButton.setBackgroundTintList(ColorStateList.valueOf(ContextCompat.getColor(
+                this, subscribed ? R.color.chip : R.color.pill_light)));
+        subscribeButton.setTextColor(ContextCompat.getColor(this,
+                subscribed ? R.color.text_primary : R.color.on_pill_light));
     }
 }

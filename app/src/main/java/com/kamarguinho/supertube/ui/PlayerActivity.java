@@ -6,7 +6,10 @@ import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
+import android.content.res.ColorStateList;
 import android.net.Uri;
+import android.text.Html;
+import android.text.method.LinkMovementMethod;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
@@ -47,6 +50,7 @@ import com.kamarguinho.supertube.util.Images;
 
 import org.schabi.newpipe.extractor.NewPipe;
 import org.schabi.newpipe.extractor.StreamingService;
+import org.schabi.newpipe.extractor.stream.Description;
 import org.schabi.newpipe.extractor.stream.StreamInfo;
 
 import java.util.List;
@@ -69,6 +73,10 @@ public class PlayerActivity extends AppCompatActivity {
     private ProgressBar progress;
     private TextView title;
     private TextView uploader;
+    private TextView meta;
+    private TextView uploaderSubs;
+    private TextView description;
+    private boolean descriptionExpanded = false;
     private ImageView uploaderAvatar;
     private MaterialButton subscribeButton;
     private MaterialButton audioButton;
@@ -106,6 +114,12 @@ public class PlayerActivity extends AppCompatActivity {
         progress = findViewById(R.id.progress);
         title = findViewById(R.id.title);
         uploader = findViewById(R.id.uploader);
+        meta = findViewById(R.id.meta);
+        uploaderSubs = findViewById(R.id.uploader_subs);
+        description = findViewById(R.id.description);
+        description.setOnClickListener(v -> toggleDescription());
+        title.setOnClickListener(v -> toggleDescription());
+        findViewById(R.id.share).setOnClickListener(v -> share());
         uploaderAvatar = findViewById(R.id.uploader_avatar);
         subscribeButton = findViewById(R.id.subscribe);
         audioButton = findViewById(R.id.audio_only);
@@ -182,7 +196,11 @@ public class PlayerActivity extends AppCompatActivity {
         progress.setVisibility(View.VISIBLE);
         title.setText("");
         uploader.setText("");
+        meta.setText("");
+        uploaderSubs.setText("");
+        description.setVisibility(View.GONE);
         related.clear();
+        ((androidx.core.widget.NestedScrollView) details).scrollTo(0, 0);
         player.stop();
 
         Bg.run(() -> {
@@ -226,6 +244,34 @@ public class PlayerActivity extends AppCompatActivity {
         progress.setVisibility(View.GONE);
         title.setText(info.getName());
         uploader.setText(info.getUploaderName());
+
+        final StringBuilder m = new StringBuilder();
+        if (info.getViewCount() >= 0) {
+            m.append(getString(R.string.views, ItemAdapter.formatCount(info.getViewCount())));
+        }
+        if (info.getTextualUploadDate() != null) {
+            m.append("   ").append(info.getTextualUploadDate());
+        }
+        if (info.getLikeCount() > 0) {
+            m.append("   👍 ").append(ItemAdapter.formatCount(info.getLikeCount()));
+        }
+        meta.setText(m);
+        uploaderSubs.setText(info.getUploaderSubscriberCount() > 0
+                ? getString(R.string.subs_count,
+                ItemAdapter.formatCount(info.getUploaderSubscriberCount())) : "");
+
+        final Description d = info.getDescription();
+        if (d != null && !d.content().trim().isEmpty()) {
+            description.setText(d.type() == Description.Type.HTML
+                    ? Html.fromHtml(d.content(), Html.FROM_HTML_MODE_COMPACT)
+                    : d.content());
+            descriptionExpanded = false;
+            description.setMaxLines(3);
+            description.setMovementMethod(null);
+            description.setVisibility(View.VISIBLE);
+        } else {
+            description.setVisibility(View.GONE);
+        }
         Glide.with(this).load(Images.best(info.getUploaderAvatars()))
                 .apply(RequestOptions.circleCropTransform())
                 .placeholder(R.color.thumb_placeholder).into(uploaderAvatar);
@@ -262,6 +308,30 @@ public class PlayerActivity extends AppCompatActivity {
                 });
     }
 
+    private void toggleDescription() {
+        if (description.getVisibility() != View.VISIBLE) {
+            return;
+        }
+        descriptionExpanded = !descriptionExpanded;
+        description.setMaxLines(descriptionExpanded ? Integer.MAX_VALUE : 3);
+        title.setMaxLines(descriptionExpanded ? 6 : 2);
+        // Links da descrição só ficam clicáveis com ela aberta
+        description.setMovementMethod(descriptionExpanded
+                ? LinkMovementMethod.getInstance() : null);
+    }
+
+    private void share() {
+        final StreamInfo info = currentInfo;
+        if (info == null) {
+            return;
+        }
+        final Intent send = new Intent(Intent.ACTION_SEND)
+                .setType("text/plain")
+                .putExtra(Intent.EXTRA_SUBJECT, info.getName())
+                .putExtra(Intent.EXTRA_TEXT, info.getUrl());
+        startActivity(Intent.createChooser(send, getString(R.string.share)));
+    }
+
     // ---------- Favoritos ----------
 
     private void toggleFavorite() {
@@ -280,8 +350,10 @@ public class PlayerActivity extends AppCompatActivity {
 
     private void updateFavoriteButton() {
         final StreamInfo info = currentInfo;
-        favoriteButton.setText(info != null && favorites.contains(info.getUrl())
-                ? R.string.favorited : R.string.favorite);
+        final boolean fav = info != null && favorites.contains(info.getUrl());
+        favoriteButton.setText(fav ? R.string.favorited : R.string.favorite);
+        favoriteButton.setIconResource(fav ? R.drawable.ic_favorite_filled
+                : R.drawable.ic_favorite_outline);
     }
 
     // ---------- Inscrição ----------
@@ -307,8 +379,13 @@ public class PlayerActivity extends AppCompatActivity {
         final boolean has = info != null && info.getUploaderUrl() != null;
         subscribeButton.setVisibility(has ? View.VISIBLE : View.GONE);
         if (has) {
-            subscribeButton.setText(subscriptions.isSubscribed(info.getUploaderUrl())
-                    ? R.string.unsubscribe : R.string.subscribe);
+            final boolean sub = subscriptions.isSubscribed(info.getUploaderUrl());
+            subscribeButton.setText(sub ? R.string.unsubscribe : R.string.subscribe);
+            // Branco quando ainda não inscrito, cinza quando já inscrito
+            subscribeButton.setBackgroundTintList(ColorStateList.valueOf(ContextCompat.getColor(
+                    this, sub ? R.color.chip : R.color.pill_light)));
+            subscribeButton.setTextColor(ContextCompat.getColor(this,
+                    sub ? R.color.text_primary : R.color.on_pill_light));
         }
     }
 

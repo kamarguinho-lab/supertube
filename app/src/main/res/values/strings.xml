@@ -4,7 +4,7 @@
     <string name="notification_channel_player">Player</string>
     <string name="search_hint">Pesquisar vídeos</string>
     <string name="search">Pesquisar</string>
-    <string name="tab_search">Buscar</string>
+    <string name="tab_search">Início</string>
     <string name="tab_subscriptions">Inscrições</string>
     <string name="search_hint_message">Pesquise qualquer vídeo. Sem anúncios e sem conta.\n\nDica: toque e segure um vídeo para abrir o canal.</string>
     <string name="no_results">Nada encontrado.</string>
@@ -12,7 +12,7 @@
     <string name="feed_empty">Nenhum vídeo novo. Puxe para baixo para atualizar.</string>
     <string name="error_prefix">Erro: %1$s</string>
     <string name="subscribe">Inscrever-se</string>
-    <string name="unsubscribe">Inscrito ✓</string>
+    <string name="unsubscribe">Inscrito</string>
     <string name="subscribed_toast">Canal adicionado às suas inscrições</string>
     <string name="download">Baixar</string>
     <string name="download_started">Download iniciado. O arquivo vai para Downloads/SuperTube.</string>
@@ -21,9 +21,9 @@
     <string name="video_mode">Voltar ao vídeo</string>
     <string name="no_channel">Canal não disponível</string>
     <string name="tab_favorites">Favoritos</string>
-    <string name="tab_account">Conta</string>
+    <string name="tab_account">Você</string>
     <string name="favorite">Favoritar</string>
-    <string name="favorited">Favorito ✓</string>
+    <string name="favorited">Favorito</string>
     <string name="no_favorites">Nenhum favorito ainda.\n\nToque em \"Favoritar\" num vídeo, ou importe seus vídeos curtidos na aba Conta.</string>
     <string name="account_title">Importar do YouTube</string>
     <string name="account_intro">Traga suas inscrições e seus vídeos curtidos do YouTube para o SuperTube. Tudo fica salvo só neste celular.</string>
@@ -37,4 +37,8 @@
     <string name="import_nothing">Nenhuma inscrição ou vídeo foi encontrado nesse arquivo.</string>
     <string name="login_cancelled">Login cancelado.</string>
     <string name="login_not_configured">O login Google ainda não foi ativado para este app no Google Cloud. Enquanto isso, use a importação do Google Takeout.\n\nDetalhe: %1$s</string>
+    <string name="share">Compartilhar</string>
+    <string name="views">%1$s de visualizações</string>
+    <string name="subs_count">%1$s de inscritos</string>
+    <string name="videos">Vídeos</string>
 </resources>

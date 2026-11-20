@@ -3,17 +3,19 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:background="?attr/selectableItemBackground"
-    android:orientation="horizontal"
-    android:padding="8dp">
+    android:orientation="vertical"
+    android:paddingBottom="20dp">
 
     <FrameLayout
-        android:layout_width="160dp"
-        android:layout_height="90dp">
+        android:id="@+id/thumb_box"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
 
         <ImageView
             android:id="@+id/thumb"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
+            android:layout_height="0dp"
+            android:adjustViewBounds="true"
             android:contentDescription="@null"
             android:scaleType="centerCrop" />
 
@@ -22,38 +24,55 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="bottom|end"
-            android:layout_margin="4dp"
+            android:layout_margin="8dp"
             android:background="@drawable/duration_bg"
             android:paddingHorizontal="4dp"
             android:paddingVertical="1dp"
             android:textColor="@color/text_primary"
-            android:textSize="12sp" />
+            android:textSize="12sp"
+            android:textStyle="bold" />
     </FrameLayout>
 
     <LinearLayout
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginStart="12dp"
-        android:layout_weight="1"
-        android:orientation="vertical">
+        android:orientation="horizontal"
+        android:paddingStart="12dp"
+        android:paddingTop="12dp"
+        android:paddingEnd="12dp">
 
-        <TextView
-            android:id="@+id/title"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:ellipsize="end"
-            android:maxLines="2"
-            android:textColor="@color/text_primary"
-            android:textSize="15sp" />
+        <ImageView
+            android:id="@+id/avatar"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_marginEnd="12dp"
+            android:contentDescription="@null" />
 
-        <TextView
-            android:id="@+id/subtitle"
-            android:layout_width="match_parent"
+        <LinearLayout
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:ellipsize="end"
-            android:maxLines="2"
-            android:textColor="@color/text_secondary"
-            android:textSize="12sp" />
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:lineSpacingExtra="2dp"
+                android:maxLines="2"
+                android:textColor="@color/text_primary"
+                android:textSize="15sp" />
+
+            <TextView
+                android:id="@+id/subtitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
+                android:ellipsize="end"
+                android:maxLines="2"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
+        </LinearLayout>
     </LinearLayout>
 </LinearLayout>

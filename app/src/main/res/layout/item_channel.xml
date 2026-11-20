@@ -5,13 +5,14 @@
     android:background="?attr/selectableItemBackground"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:padding="8dp">
+    android:paddingHorizontal="12dp"
+    android:paddingVertical="16dp">
 
     <ImageView
         android:id="@+id/avatar"
-        android:layout_width="64dp"
-        android:layout_height="64dp"
-        android:layout_marginHorizontal="48dp"
+        android:layout_width="88dp"
+        android:layout_height="88dp"
+        android:layout_marginHorizontal="24dp"
         android:contentDescription="@null" />
 
     <LinearLayout
@@ -24,8 +25,8 @@
             android:id="@+id/name"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:maxLines="1"
             android:ellipsize="end"
+            android:maxLines="2"
             android:textColor="@color/text_primary"
             android:textSize="16sp" />
 
@@ -33,6 +34,7 @@
             android:id="@+id/info"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
             android:textColor="@color/text_secondary"
             android:textSize="12sp" />
     </LinearLayout>
