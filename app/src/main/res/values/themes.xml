@@ -58,4 +58,13 @@
     <style name="NoIndicator" parent="Widget.Material3.BottomNavigationView.ActiveIndicator">
         <item name="android:color">@android:color/transparent</item>
     </style>
+
+    <!-- Tema da versão para TV -->
+    <style name="Theme.SuperTube.TV" parent="Theme.Leanback">
+        <item name="android:windowBackground">@color/background</item>
+        <item name="android:colorPrimary">@color/background</item>
+        <item name="android:colorAccent">@color/brand</item>
+        <item name="defaultBrandColor">@color/background</item>
+        <item name="defaultSearchColor">@color/brand</item>
+    </style>
 </resources>

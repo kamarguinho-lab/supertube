@@ -41,4 +41,9 @@
     <string name="views">%1$s de visualizações</string>
     <string name="subs_count">%1$s de inscritos</string>
     <string name="videos">Vídeos</string>
+    <string name="tv_results_for">Resultados para \"%1$s\"</string>
+    <string name="tv_hint">Botão Menu do controle: favoritar</string>
+    <string name="tv_hint_favorited">Nos favoritos • botão Menu remove</string>
+    <string name="tv_favorited">Adicionado aos favoritos</string>
+    <string name="tv_unfavorited">Removido dos favoritos</string>
 </resources>

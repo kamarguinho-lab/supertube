@@ -14,6 +14,19 @@ App Android para assistir vídeos do YouTube **sem anúncios e sem conta**, no e
 
 Dica: toque e segure um vídeo da lista para abrir o canal.
 
+## Versão para TV
+
+O mesmo APK funciona em **Android TV / Google TV** (TV Box, Chromecast com Google TV, Mi Box, TVs Sony/TCL/Philips com Android).
+Na TV ele abre uma tela própria para controle remoto:
+
+- Menu lateral com fileiras: Inscrições, Favoritos e categorias (Em alta, Música, Jogos…)
+- Busca com teclado na tela ou pelo microfone do controle
+- Player em tela cheia; o próximo vídeo começa sozinho
+- Botão **Menu** do controle durante o vídeo: favoritar
+
+Para instalar na TV: instale o app **Downloader** (by AFTVnews) na TV, digite o link do APK
+e instale. Ou copie o APK num pendrive e abra com um gerenciador de arquivos.
+
 ## Como instalar
 
 1. Abra a página **Releases** deste repositório no celular.

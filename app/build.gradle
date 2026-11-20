@@ -75,4 +75,7 @@ dependencies {
     // Login com a conta Google (só para importar inscrições e curtidos)
     implementation 'com.google.android.gms:play-services-auth:21.2.0'
     implementation 'androidx.activity:activity:1.9.3'
+
+    // Interface para TV (controle remoto, fileiras de vídeos)
+    implementation 'androidx.leanback:leanback:1.0.0'
 }
