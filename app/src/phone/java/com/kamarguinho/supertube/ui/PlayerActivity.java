@@ -46,6 +46,8 @@ import com.kamarguinho.supertube.data.History;
 import com.kamarguinho.supertube.data.Subscriptions;
 import com.kamarguinho.supertube.player.MediaResolver;
 import com.kamarguinho.supertube.player.PlayerService;
+import com.kamarguinho.supertube.player.RelatedPlayer;
+import com.kamarguinho.supertube.player.SeekHelper;
 import com.kamarguinho.supertube.player.Subtitles;
 import com.kamarguinho.supertube.util.Bg;
 import com.kamarguinho.supertube.util.Images;
@@ -71,6 +73,9 @@ public class PlayerActivity extends AppCompatActivity {
     private static Subtitles.Option currentSubtitle;
 
     private StyledPlayerView playerView;
+    private View playerBox;
+    private RelatedPlayer relatedPlayer;
+    private SeekHelper seekHelper;
     private ExoPlayer player;
     private View details;
     private ProgressBar progress;
@@ -144,7 +149,18 @@ public class PlayerActivity extends AppCompatActivity {
 
         player = PlayerService.getPlayer(this);
         player.addListener(errorListener);
-        playerView.setPlayer(player);
+        playerBox = findViewById(R.id.player_box);
+        // Controles como no YouTube: anterior, play/pausa e próximo (vídeo relacionado);
+        // toque duplo nas laterais avança/volta 10 segundos
+        relatedPlayer = new RelatedPlayer(player, this::playNextRelated);
+        playerView.setPlayer(relatedPlayer);
+        playerView.setShowRewindButton(false);
+        playerView.setShowFastForwardButton(false);
+        playerView.setShowPreviousButton(true);
+        playerView.setShowNextButton(true);
+        seekHelper = new SeekHelper(player, findViewById(R.id.seek_left),
+                findViewById(R.id.seek_right));
+        setupGestures();
         playerView.setShowSubtitleButton(false);
         Subtitles.applyStyle(playerView.getSubtitleView(), 1f);
         playerView.setFullscreenButtonClickListener(isFullscreen -> setRequestedOrientation(
@@ -266,7 +282,66 @@ public class PlayerActivity extends AppCompatActivity {
         });
     }
 
+    private void setupGestures() {
+        final android.view.GestureDetector detector = new android.view.GestureDetector(this,
+                new android.view.GestureDetector.SimpleOnGestureListener() {
+                    @Override
+                    public boolean onDown(@NonNull final android.view.MotionEvent e) {
+                        return true;
+                    }
+
+                    @Override
+                    public boolean onSingleTapConfirmed(
+                            @NonNull final android.view.MotionEvent e) {
+                        if (playerView.isControllerFullyVisible()) {
+                            playerView.hideController();
+                        } else {
+                            playerView.showController();
+                        }
+                        return true;
+                    }
+
+                    @Override
+                    public boolean onDoubleTap(@NonNull final android.view.MotionEvent e) {
+                        final float x = e.getX();
+                        final float w = playerView.getWidth();
+                        if (x < w * 0.4f) {
+                            seekHelper.seek(-1, 10_000);
+                        } else if (x > w * 0.6f) {
+                            seekHelper.seek(1, 10_000);
+                        } else if (player.isPlaying()) {
+                            player.pause();
+                        } else {
+                            player.play();
+                        }
+                        return true;
+                    }
+                });
+        playerView.setOnTouchListener((v, event) -> {
+            detector.onTouchEvent(event);
+            if (event.getAction() == android.view.MotionEvent.ACTION_UP) {
+                v.performClick();
+            }
+            return true;
+        });
+    }
+
+    /** Botão "próximo" dos controles: toca o primeiro vídeo relacionado. */
+    private void playNextRelated() {
+        final StreamInfo info = currentInfo;
+        if (info == null) {
+            return;
+        }
+        for (final org.schabi.newpipe.extractor.InfoItem item : info.getRelatedItems()) {
+            if (item instanceof org.schabi.newpipe.extractor.stream.StreamInfoItem) {
+                load(item.getUrl());
+                return;
+            }
+        }
+    }
+
     private void showInfo(final StreamInfo info) {
+        relatedPlayer.setHasNext(!info.getRelatedItems().isEmpty());
         progress.setVisibility(View.GONE);
         title.setText(info.getName());
         uploader.setText(info.getUploaderName());
@@ -504,7 +579,7 @@ public class PlayerActivity extends AppCompatActivity {
         final boolean landscape = orientation == Configuration.ORIENTATION_LANDSCAPE;
         final WindowInsetsControllerCompat insets =
                 WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
-        final ViewGroup.LayoutParams lp = playerView.getLayoutParams();
+        final ViewGroup.LayoutParams lp = playerBox.getLayoutParams();
         if (landscape) {
             details.setVisibility(View.GONE);
             lp.height = ViewGroup.LayoutParams.MATCH_PARENT;
@@ -520,7 +595,7 @@ public class PlayerActivity extends AppCompatActivity {
         if (lp instanceof LinearLayout.LayoutParams) {
             ((LinearLayout.LayoutParams) lp).weight = landscape ? 1 : 0;
         }
-        playerView.setLayoutParams(lp);
+        playerBox.setLayoutParams(lp);
     }
 
     private void saveProgress() {

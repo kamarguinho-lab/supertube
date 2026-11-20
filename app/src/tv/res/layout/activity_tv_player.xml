@@ -10,7 +10,40 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:focusable="true"
+        app:buffered_color="#66FFFFFF"
+        app:played_color="#FF0000"
+        app:scrubber_color="#FF0000"
+        app:unplayed_color="#33FFFFFF"
         app:show_buffering="when_playing" />
+
+    <TextView
+        android:id="@+id/seek_left"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical|start"
+        android:layout_marginStart="96dp"
+        android:background="@drawable/seek_indicator_bg"
+        android:paddingHorizontal="18dp"
+        android:paddingVertical="10dp"
+        android:textColor="@android:color/white"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/seek_right"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical|end"
+        android:layout_marginEnd="96dp"
+        android:background="@drawable/seek_indicator_bg"
+        android:paddingHorizontal="18dp"
+        android:paddingVertical="10dp"
+        android:textColor="@android:color/white"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:visibility="gone" />
+
 
     <LinearLayout
         android:id="@+id/overlay_top"

@@ -7,12 +7,51 @@
     android:fitsSystemWindows="true"
     android:orientation="vertical">
 
-    <com.google.android.exoplayer2.ui.StyledPlayerView
-        android:id="@+id/player_view"
+    <FrameLayout
+        android:id="@+id/player_box"
         android:layout_width="match_parent"
         android:layout_height="220dp"
-        android:background="@android:color/black"
-        app:show_buffering="when_playing" />
+        android:background="@android:color/black">
+
+        <com.google.android.exoplayer2.ui.StyledPlayerView
+            android:id="@+id/player_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@android:color/black"
+            app:buffered_color="#66FFFFFF"
+            app:played_color="#FF0000"
+            app:scrubber_color="#FF0000"
+            app:unplayed_color="#33FFFFFF"
+            app:show_buffering="when_playing" />
+
+        <TextView
+            android:id="@+id/seek_left"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical|start"
+            android:layout_marginStart="32dp"
+            android:background="@drawable/seek_indicator_bg"
+            android:paddingHorizontal="18dp"
+            android:paddingVertical="10dp"
+            android:textColor="@android:color/white"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/seek_right"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical|end"
+            android:layout_marginEnd="32dp"
+            android:background="@drawable/seek_indicator_bg"
+            android:paddingHorizontal="18dp"
+            android:paddingVertical="10dp"
+            android:textColor="@android:color/white"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+    </FrameLayout>
 
     <androidx.core.widget.NestedScrollView
         android:id="@+id/details"

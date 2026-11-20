@@ -31,6 +31,8 @@ import com.kamarguinho.supertube.data.Favorites;
 import com.kamarguinho.supertube.data.History;
 import com.kamarguinho.supertube.data.Subscriptions;
 import com.kamarguinho.supertube.player.MediaResolver;
+import com.kamarguinho.supertube.player.RelatedPlayer;
+import com.kamarguinho.supertube.player.SeekHelper;
 import com.kamarguinho.supertube.player.Subtitles;
 import com.kamarguinho.supertube.util.Bg;
 import com.kamarguinho.supertube.util.Images;
@@ -50,6 +52,8 @@ public class TvPlayerActivity extends AppCompatActivity {
     private static final int MAX_HEIGHT = 1080;
 
     private ExoPlayer player;
+    private RelatedPlayer relatedPlayer;
+    private SeekHelper seekHelper;
     private StyledPlayerView playerView;
     private View overlay;
     private TextView titleView;
@@ -127,7 +131,16 @@ public class TvPlayerActivity extends AppCompatActivity {
                         Toast.LENGTH_LONG).show();
             }
         });
-        playerView.setPlayer(player);
+        // Controles como no YouTube da TV: play/pausa no centro e barra vermelha;
+        // setas esquerda/direita voltam/avançam 10 s (segurando, acelera)
+        relatedPlayer = new RelatedPlayer(player, this::playNext);
+        playerView.setPlayer(relatedPlayer);
+        playerView.setShowRewindButton(false);
+        playerView.setShowFastForwardButton(false);
+        playerView.setShowPreviousButton(true);
+        playerView.setShowNextButton(true);
+        seekHelper = new SeekHelper(player, findViewById(R.id.seek_left),
+                findViewById(R.id.seek_right));
         playerView.setShowSubtitleButton(false);
         Subtitles.applyStyle(playerView.getSubtitleView(), 1.15f);
         playerView.setControllerVisibilityListener(
@@ -195,6 +208,7 @@ public class TvPlayerActivity extends AppCompatActivity {
                 updateHint();
                 updateActions();
                 buildPanelRows(current, t);
+                relatedPlayer.setHasNext(!current.getRelatedItems().isEmpty());
                 currentSubtitle = (Subtitles.Option) r[2];
                 Subtitles.select(player, currentSubtitle);
                 // Continua de onde parou e grava no histórico
@@ -566,6 +580,26 @@ public class TvPlayerActivity extends AppCompatActivity {
                 }
             } else if (k == KeyEvent.KEYCODE_DPAD_DOWN && current != null) {
                 showPanel();
+                return true;
+            } else if (k == KeyEvent.KEYCODE_DPAD_LEFT || k == KeyEvent.KEYCODE_DPAD_RIGHT
+                    || k == KeyEvent.KEYCODE_MEDIA_REWIND
+                    || k == KeyEvent.KEYCODE_MEDIA_FAST_FORWARD) {
+                // Segurando a seta, pula cada vez mais (10 s, 15 s, 20 s... até 60 s)
+                final int dir = (k == KeyEvent.KEYCODE_DPAD_LEFT
+                        || k == KeyEvent.KEYCODE_MEDIA_REWIND) ? -1 : 1;
+                final long step = Math.min(60_000, 10_000 + event.getRepeatCount() * 5_000L);
+                seekHelper.seek(dir, step);
+                playerView.showController();
+                return true;
+            } else if ((k == KeyEvent.KEYCODE_DPAD_CENTER || k == KeyEvent.KEYCODE_ENTER)
+                    && !playerView.isControllerFullyVisible()) {
+                // OK pausa/continua direto, como no YouTube da TV
+                if (player.isPlaying()) {
+                    player.pause();
+                } else {
+                    player.play();
+                }
+                playerView.showController();
                 return true;
             }
         }

@@ -34,6 +34,7 @@ import com.kamarguinho.supertube.data.Favorites;
 import com.kamarguinho.supertube.data.Feed;
 import com.kamarguinho.supertube.data.History;
 import com.kamarguinho.supertube.data.Movies;
+import com.kamarguinho.supertube.data.Trending;
 import com.kamarguinho.supertube.data.Subscriptions;
 import com.kamarguinho.supertube.util.Bg;
 import com.kamarguinho.supertube.util.Images;
@@ -62,6 +63,7 @@ public class TvMainActivity extends AppCompatActivity {
 
     /** Categorias da tela inicial (nome, texto pesquisado). "Tudo" mostra as fileiras. */
     private static final String[][] CATEGORIES = {
+            {"Em alta", Trending.QUERY},
             {"Tudo", null},
             {"Música", "música"},
             {"Jogos", "games gameplay"},
@@ -78,7 +80,7 @@ public class TvMainActivity extends AppCompatActivity {
 
     /** Fileiras do "Tudo" (título, texto pesquisado). */
     private static final String[][] HOME_ROWS = {
-            {"Em alta", "em alta hoje"},
+            {"Em alta", Trending.QUERY},
             {"Música", "música"},
             {"Ao vivo", "ao vivo agora"},
             {"Jogos", "games gameplay"},
@@ -179,6 +181,8 @@ public class TvMainActivity extends AppCompatActivity {
         });
 
         showSection(SECTION_HOME);
+        // Sempre abre no "Em alta"
+        selectChip(0);
 
         // Procura atualização sozinho (no máximo 2 vezes por dia)
         com.kamarguinho.supertube.update.Updater.checkAndPrompt(this, true);
@@ -304,7 +308,7 @@ public class TvMainActivity extends AppCompatActivity {
 
         switch (s) {
             case SECTION_HOME:
-                if (chipSelected == 0 && !homeRowsLoaded) {
+                if (CATEGORIES[chipSelected][1] == null && !homeRowsLoaded) {
                     loadHomeRows();
                 }
                 break;
@@ -463,6 +467,9 @@ public class TvMainActivity extends AppCompatActivity {
     private List<StreamInfoItem> searchVideos(final String query) throws Exception {
         if (Movies.QUERY.equals(query)) {
             return Movies.load(40);
+        }
+        if (Trending.QUERY.equals(query)) {
+            return Trending.load();
         }
         return TvAdapters.streamsOnly(SearchInfo.getInfo(yt,
                 yt.getSearchQHFactory().fromQuery(query)).getRelatedItems());

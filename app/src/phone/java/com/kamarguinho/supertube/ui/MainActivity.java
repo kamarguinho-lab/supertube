@@ -44,6 +44,7 @@ import com.kamarguinho.supertube.data.Favorites;
 import com.kamarguinho.supertube.data.Feed;
 import com.kamarguinho.supertube.data.History;
 import com.kamarguinho.supertube.data.Movies;
+import com.kamarguinho.supertube.data.Trending;
 import com.kamarguinho.supertube.data.Importer;
 import com.kamarguinho.supertube.data.Subscriptions;
 import com.kamarguinho.supertube.util.Bg;
@@ -75,7 +76,7 @@ public class MainActivity extends AppCompatActivity {
 
     /** Categorias da tela inicial (nome mostrado, texto pesquisado). */
     private static final String[][] CATEGORIES = {
-            {"Em alta", "em alta hoje"},
+            {"Em alta", Trending.QUERY},
             {"Música", "música"},
             {"Jogos", "games gameplay"},
             {"Notícias", "notícias hoje"},
@@ -550,10 +551,10 @@ public class MainActivity extends AppCompatActivity {
         progress.setVisibility(View.VISIBLE);
         nextPage = null;
 
-        if (Movies.QUERY.equals(q)) {
-            // Categoria Filmes: só filmes completos (mais de 1 hora)
+        if (Movies.QUERY.equals(q) || Trending.QUERY.equals(q)) {
+            // Em alta (tendências do YouTube) ou Filmes (só filmes completos)
             currentQuery = null;
-            Bg.run(() -> Movies.load(50), new Bg.Callback<List<StreamInfoItem>>() {
+            Bg.run(() -> Movies.QUERY.equals(q) ? Movies.load(50) : Trending.load(), new Bg.Callback<List<StreamInfoItem>>() {
                 @Override
                 public void onResult(final List<StreamInfoItem> result) {
                     if (token != searchToken) {
