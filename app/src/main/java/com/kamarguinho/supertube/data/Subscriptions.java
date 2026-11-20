@@ -76,6 +76,37 @@ public final class Subscriptions {
         save(list);
     }
 
+    /** Adiciona vários (importação). Retorna quantos são novos. */
+    public int addAll(final List<Channel> channels) {
+        final List<Channel> list = all();
+        int added = 0;
+        for (final Channel ch : channels) {
+            boolean exists = false;
+            for (final Channel c : list) {
+                if (sameChannel(c.url, ch.url)) {
+                    exists = true;
+                    break;
+                }
+            }
+            if (!exists) {
+                list.add(ch);
+                added++;
+            }
+        }
+        save(list);
+        return added;
+    }
+
+    /** Compara pelo ID do canal (UC...) quando existir, para não duplicar. */
+    private static boolean sameChannel(final String a, final String b) {
+        final int ia = a.indexOf("/channel/");
+        final int ib = b.indexOf("/channel/");
+        if (ia >= 0 && ib >= 0) {
+            return a.substring(ia).equals(b.substring(ib));
+        }
+        return a.equals(b);
+    }
+
     public void remove(final String url) {
         final List<Channel> list = all();
         final List<Channel> kept = new ArrayList<>();

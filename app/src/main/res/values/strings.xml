@@ -20,4 +20,21 @@
     <string name="audio_only">Só áudio</string>
     <string name="video_mode">Voltar ao vídeo</string>
     <string name="no_channel">Canal não disponível</string>
+    <string name="tab_favorites">Favoritos</string>
+    <string name="tab_account">Conta</string>
+    <string name="favorite">Favoritar</string>
+    <string name="favorited">Favorito ✓</string>
+    <string name="no_favorites">Nenhum favorito ainda.\n\nToque em \"Favoritar\" num vídeo, ou importe seus vídeos curtidos na aba Conta.</string>
+    <string name="account_title">Importar do YouTube</string>
+    <string name="account_intro">Traga suas inscrições e seus vídeos curtidos do YouTube para o SuperTube. Tudo fica salvo só neste celular.</string>
+    <string name="google_login">Entrar com Google e importar</string>
+    <string name="google_login_info">Usa a sua conta Google só para ler suas inscrições e vídeos curtidos. O SuperTube nunca vê a sua senha.</string>
+    <string name="takeout_import">Importar arquivo do Google Takeout</string>
+    <string name="takeout_info">Sem login: abra takeout.google.com, desmarque tudo, marque só \"YouTube e YouTube Music\" e peça a exportação. Quando o Google mandar o e-mail, baixe o arquivo .zip e escolha ele aqui.</string>
+    <string name="takeout_open_site">Abrir o Google Takeout</string>
+    <string name="importing">Importando…</string>
+    <string name="import_result">Pronto! %1$d canais novos (de %2$d) e %3$d vídeos novos (de %4$d).</string>
+    <string name="import_nothing">Nenhuma inscrição ou vídeo foi encontrado nesse arquivo.</string>
+    <string name="login_cancelled">Login cancelado.</string>
+    <string name="login_not_configured">O login Google ainda não foi ativado para este app no Google Cloud. Enquanto isso, use a importação do Google Takeout.\n\nDetalhe: %1$s</string>
 </resources>

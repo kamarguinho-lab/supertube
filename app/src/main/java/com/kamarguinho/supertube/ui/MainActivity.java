@@ -1,6 +1,9 @@
 package com.kamarguinho.supertube.ui;
 
 import android.Manifest;
+import android.app.PendingIntent;
+import android.content.Intent;
+import android.net.Uri;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -15,6 +18,9 @@ import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.IntentSenderRequest;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -25,9 +31,15 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.RequestOptions;
+import com.google.android.gms.auth.api.identity.AuthorizationRequest;
+import com.google.android.gms.auth.api.identity.AuthorizationResult;
+import com.google.android.gms.auth.api.identity.Identity;
+import com.google.android.gms.common.api.Scope;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.kamarguinho.supertube.R;
+import com.kamarguinho.supertube.data.Favorites;
 import com.kamarguinho.supertube.data.Feed;
+import com.kamarguinho.supertube.data.Importer;
 import com.kamarguinho.supertube.data.Subscriptions;
 import com.kamarguinho.supertube.util.Bg;
 import com.kamarguinho.supertube.util.Images;
@@ -42,6 +54,7 @@ import org.schabi.newpipe.extractor.search.SearchInfo;
 import org.schabi.newpipe.extractor.stream.StreamInfoItem;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
@@ -60,8 +73,46 @@ public class MainActivity extends AppCompatActivity {
     private final ItemAdapter feedAdapter = new ItemAdapter();
     private final ChannelRowAdapter channelsAdapter = new ChannelRowAdapter();
 
+    private static final String YOUTUBE_READONLY =
+            "https://www.googleapis.com/auth/youtube.readonly";
+
+    private final ItemAdapter favoritesAdapter = new ItemAdapter();
     private Subscriptions subscriptions;
+    private Favorites favorites;
     private boolean feedMode = false;
+    private boolean favMode = false;
+    private boolean accountMode = false;
+
+    private View accountPanel;
+    private ProgressBar importProgress;
+    private TextView importStatus;
+    private boolean fillingTitles = false;
+
+    /** Tela de escolha de conta / permissão do Google. */
+    private final ActivityResultLauncher<IntentSenderRequest> googleAuthLauncher =
+            registerForActivityResult(new ActivityResultContracts.StartIntentSenderForResult(),
+                    result -> {
+                        try {
+                            final AuthorizationResult auth = Identity
+                                    .getAuthorizationClient(this)
+                                    .getAuthorizationResultFromIntent(result.getData());
+                            importWithToken(auth.getAccessToken());
+                        } catch (final Exception e) {
+                            importProgress.setVisibility(View.GONE);
+                            importStatus.setText(result.getResultCode() == RESULT_OK
+                                    ? getString(R.string.login_not_configured,
+                                    Images.errorMessage(e))
+                                    : getString(R.string.login_cancelled));
+                        }
+                    });
+
+    /** Seletor de arquivo do Google Takeout (.zip ou .csv). */
+    private final ActivityResultLauncher<String[]> takeoutPicker =
+            registerForActivityResult(new ActivityResultContracts.OpenDocument(), uri -> {
+                if (uri != null) {
+                    importTakeout(uri);
+                }
+            });
 
     private SearchQueryHandler currentQuery;
     private Page nextPage;
@@ -76,6 +127,17 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         subscriptions = new Subscriptions(this);
+        favorites = new Favorites(this);
+        accountPanel = findViewById(R.id.account_panel);
+        importProgress = findViewById(R.id.import_progress);
+        importStatus = findViewById(R.id.import_status);
+        findViewById(R.id.google_login).setOnClickListener(v -> googleLogin());
+        findViewById(R.id.takeout_import).setOnClickListener(v ->
+                takeoutPicker.launch(new String[]{"application/zip", "text/csv",
+                        "text/comma-separated-values", "text/plain",
+                        "application/octet-stream", "application/x-zip-compressed"}));
+        findViewById(R.id.takeout_site).setOnClickListener(v -> startActivity(new Intent(
+                Intent.ACTION_VIEW, Uri.parse("https://takeout.google.com/"))));
 
         searchBar = findViewById(R.id.search_bar);
         searchInput = findViewById(R.id.search_input);
@@ -91,7 +153,7 @@ public class MainActivity extends AppCompatActivity {
         list.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(@NonNull final RecyclerView rv, final int dx, final int dy) {
-                if (!feedMode && dy > 0
+                if (!feedMode && !favMode && !accountMode && dy > 0
                         && lm.findLastVisibleItemPosition() >= searchAdapter.getItemCount() - 4) {
                     loadMore();
                 }
@@ -117,6 +179,9 @@ public class MainActivity extends AppCompatActivity {
             if (feedMode) {
                 feedCache = null;
                 loadFeed();
+            } else if (favMode) {
+                swipe.setRefreshing(false);
+                showFavorites();
             } else {
                 swipe.setRefreshing(false);
                 if (currentQuery != null) {
@@ -129,6 +194,10 @@ public class MainActivity extends AppCompatActivity {
         nav.setOnItemSelectedListener(item -> {
             if (item.getItemId() == R.id.nav_subscriptions) {
                 showFeed();
+            } else if (item.getItemId() == R.id.nav_favorites) {
+                showFavorites();
+            } else if (item.getItemId() == R.id.nav_account) {
+                showAccount();
             } else {
                 showSearch();
             }
@@ -150,18 +219,155 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         if (feedMode) {
             showFeed();
+        } else if (favMode) {
+            showFavorites();
         }
+    }
+
+    /** Volta a tela ao estado comum antes de trocar de aba. */
+    private void resetModes() {
+        feedMode = false;
+        favMode = false;
+        accountMode = false;
+        accountPanel.setVisibility(View.GONE);
+        swipe.setVisibility(View.VISIBLE);
+        channelsRow.setVisibility(View.GONE);
+        searchBar.setVisibility(View.GONE);
+        swipe.setRefreshing(false);
+        progress.setVisibility(View.GONE);
+        message.setVisibility(View.GONE);
+    }
+
+    // ---------- Favoritos ----------
+
+    private void showFavorites() {
+        resetModes();
+        favMode = true;
+        list.setAdapter(favoritesAdapter);
+        final List<StreamInfoItem> items = favorites.asItems();
+        favoritesAdapter.set(items);
+        if (items.isEmpty()) {
+            message.setText(R.string.no_favorites);
+            message.setVisibility(View.VISIBLE);
+        }
+        fillTitlesInBackground();
+    }
+
+    /** Vídeos importados do Takeout chegam só com o ID: busca os títulos aos poucos. */
+    private void fillTitlesInBackground() {
+        if (fillingTitles) {
+            return;
+        }
+        boolean pending = false;
+        for (final Favorites.Video v : favorites.all()) {
+            if (Importer.PENDING_TITLE.equals(v.title)) {
+                pending = true;
+                break;
+            }
+        }
+        if (!pending) {
+            return;
+        }
+        fillingTitles = true;
+        Bg.run(() -> Importer.fillMissingTitles(this, 40), new Bg.Callback<Integer>() {
+            @Override
+            public void onResult(final Integer done) {
+                fillingTitles = false;
+                if (favMode) {
+                    favoritesAdapter.set(favorites.asItems());
+                    if (done > 0) {
+                        fillTitlesInBackground();
+                    }
+                }
+            }
+
+            @Override
+            public void onError(final Throwable error) {
+                fillingTitles = false;
+            }
+        });
+    }
+
+    // ---------- Conta / importação ----------
+
+    private void showAccount() {
+        resetModes();
+        accountMode = true;
+        swipe.setVisibility(View.GONE);
+        accountPanel.setVisibility(View.VISIBLE);
+    }
+
+    private void googleLogin() {
+        importProgress.setVisibility(View.VISIBLE);
+        importStatus.setText(R.string.importing);
+        final AuthorizationRequest request = AuthorizationRequest.builder()
+                .setRequestedScopes(Collections.singletonList(new Scope(YOUTUBE_READONLY)))
+                .build();
+        Identity.getAuthorizationClient(this).authorize(request)
+                .addOnSuccessListener(result -> {
+                    if (result.hasResolution()) {
+                        final PendingIntent pi = result.getPendingIntent();
+                        if (pi != null) {
+                            googleAuthLauncher.launch(
+                                    new IntentSenderRequest.Builder(pi.getIntentSender()).build());
+                            return;
+                        }
+                    }
+                    importWithToken(result.getAccessToken());
+                })
+                .addOnFailureListener(e -> {
+                    importProgress.setVisibility(View.GONE);
+                    importStatus.setText(getString(R.string.login_not_configured,
+                            Images.errorMessage(e)));
+                });
+    }
+
+    private void importWithToken(final String token) {
+        if (token == null) {
+            importProgress.setVisibility(View.GONE);
+            importStatus.setText(getString(R.string.login_not_configured, "sem token"));
+            return;
+        }
+        importProgress.setVisibility(View.VISIBLE);
+        importStatus.setText(R.string.importing);
+        Bg.run(() -> Importer.importFromAccount(this, token), importCallback());
+    }
+
+    private void importTakeout(final Uri uri) {
+        importProgress.setVisibility(View.VISIBLE);
+        importStatus.setText(R.string.importing);
+        Bg.run(() -> Importer.importTakeout(this, uri), importCallback());
+    }
+
+    private Bg.Callback<Importer.Result> importCallback() {
+        return new Bg.Callback<Importer.Result>() {
+            @Override
+            public void onResult(final Importer.Result r) {
+                importProgress.setVisibility(View.GONE);
+                feedCache = null;
+                if (r.channelsFound == 0 && r.videosFound == 0) {
+                    importStatus.setText(R.string.import_nothing);
+                } else {
+                    importStatus.setText(getString(R.string.import_result, r.channelsAdded,
+                            r.channelsFound, r.videosAdded, r.videosFound));
+                }
+            }
+
+            @Override
+            public void onError(final Throwable error) {
+                importProgress.setVisibility(View.GONE);
+                importStatus.setText(getString(R.string.error_prefix,
+                        Images.errorMessage(error)));
+            }
+        };
     }
 
     // ---------- Busca ----------
 
     private void showSearch() {
-        feedMode = false;
+        resetModes();
         searchBar.setVisibility(View.VISIBLE);
-        channelsRow.setVisibility(View.GONE);
         list.setAdapter(searchAdapter);
-        progress.setVisibility(View.GONE);
-        swipe.setRefreshing(false);
         if (searchAdapter.getItemCount() == 0) {
             message.setText(R.string.search_hint_message);
             message.setVisibility(View.VISIBLE);
@@ -191,11 +397,14 @@ public class MainActivity extends AppCompatActivity {
                 if (token != searchToken) {
                     return;
                 }
-                progress.setVisibility(View.GONE);
                 currentQuery = (SearchQueryHandler) r[0];
                 final SearchInfo info = (SearchInfo) r[1];
                 nextPage = info.getNextPage();
                 searchAdapter.set(info.getRelatedItems());
+                if (feedMode || favMode || accountMode) {
+                    return;
+                }
+                progress.setVisibility(View.GONE);
                 if (searchAdapter.getItemCount() == 0) {
                     message.setText(R.string.no_results);
                     message.setVisibility(View.VISIBLE);
@@ -204,7 +413,7 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onError(final Throwable error) {
-                if (token != searchToken) {
+                if (token != searchToken || feedMode || favMode || accountMode) {
                     return;
                 }
                 progress.setVisibility(View.GONE);
@@ -252,8 +461,8 @@ public class MainActivity extends AppCompatActivity {
     // ---------- Inscrições ----------
 
     private void showFeed() {
+        resetModes();
         feedMode = true;
-        searchBar.setVisibility(View.GONE);
         list.setAdapter(feedAdapter);
         final List<Subscriptions.Channel> channels = subscriptions.all();
         channelsAdapter.set(channels);
@@ -287,11 +496,11 @@ public class MainActivity extends AppCompatActivity {
             public void onResult(final List<StreamInfoItem> result) {
                 feedCache = result;
                 feedCacheKey = key;
-                progress.setVisibility(View.GONE);
-                swipe.setRefreshing(false);
                 if (!feedMode) {
                     return;
                 }
+                progress.setVisibility(View.GONE);
+                swipe.setRefreshing(false);
                 feedAdapter.set(result);
                 if (result.isEmpty()) {
                     message.setText(R.string.feed_empty);
@@ -301,6 +510,9 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onError(final Throwable error) {
+                if (!feedMode) {
+                    return;
+                }
                 progress.setVisibility(View.GONE);
                 swipe.setRefreshing(false);
                 message.setText(getString(R.string.error_prefix, Images.errorMessage(error)));

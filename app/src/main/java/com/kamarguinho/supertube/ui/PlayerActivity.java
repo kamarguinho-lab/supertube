@@ -38,6 +38,7 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.kamarguinho.supertube.R;
 import com.kamarguinho.supertube.data.Downloads;
+import com.kamarguinho.supertube.data.Favorites;
 import com.kamarguinho.supertube.data.Subscriptions;
 import com.kamarguinho.supertube.player.MediaResolver;
 import com.kamarguinho.supertube.player.PlayerService;
@@ -71,6 +72,8 @@ public class PlayerActivity extends AppCompatActivity {
     private ImageView uploaderAvatar;
     private MaterialButton subscribeButton;
     private MaterialButton audioButton;
+    private MaterialButton favoriteButton;
+    private Favorites favorites;
     private final ItemAdapter related = new ItemAdapter();
     private Subscriptions subscriptions;
     private MediaResolver resolver;
@@ -95,6 +98,7 @@ public class PlayerActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_player);
         subscriptions = new Subscriptions(this);
+        favorites = new Favorites(this);
         resolver = new MediaResolver(this);
 
         playerView = findViewById(R.id.player_view);
@@ -105,6 +109,8 @@ public class PlayerActivity extends AppCompatActivity {
         uploaderAvatar = findViewById(R.id.uploader_avatar);
         subscribeButton = findViewById(R.id.subscribe);
         audioButton = findViewById(R.id.audio_only);
+        favoriteButton = findViewById(R.id.favorite);
+        favoriteButton.setOnClickListener(v -> toggleFavorite());
 
         final RecyclerView list = findViewById(R.id.related);
         list.setLayoutManager(new LinearLayoutManager(this));
@@ -225,6 +231,7 @@ public class PlayerActivity extends AppCompatActivity {
                 .placeholder(R.color.thumb_placeholder).into(uploaderAvatar);
         related.set(info.getRelatedItems());
         updateSubscribeButton();
+        updateFavoriteButton();
         audioButton.setText(audioOnly ? R.string.video_mode : R.string.audio_only);
     }
 
@@ -253,6 +260,28 @@ public class PlayerActivity extends AppCompatActivity {
                                 Toast.LENGTH_LONG).show();
                     }
                 });
+    }
+
+    // ---------- Favoritos ----------
+
+    private void toggleFavorite() {
+        final StreamInfo info = currentInfo;
+        if (info == null) {
+            return;
+        }
+        if (favorites.contains(info.getUrl())) {
+            favorites.remove(info.getUrl());
+        } else {
+            favorites.add(new Favorites.Video(info.getServiceId(), info.getUrl(),
+                    info.getName(), info.getUploaderName(), Images.best(info.getThumbnails())));
+        }
+        updateFavoriteButton();
+    }
+
+    private void updateFavoriteButton() {
+        final StreamInfo info = currentInfo;
+        favoriteButton.setText(info != null && favorites.contains(info.getUrl())
+                ? R.string.favorited : R.string.favorite);
     }
 
     // ---------- Inscrição ----------
