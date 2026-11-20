@@ -105,6 +105,10 @@ public class PlayerActivity extends AppCompatActivity {
             if (state == Player.STATE_ENDED && currentInfo != null) {
                 History.savePosition(PlayerActivity.this, currentInfo.getUrl(),
                         currentInfo.getDuration() * 1000);
+                // Série: começa o próximo episódio sozinho
+                if (com.kamarguinho.supertube.player.PlayQueue.contains(currentInfo.getUrl())) {
+                    playNextRelated();
+                }
             }
         }
 
@@ -377,10 +381,38 @@ public class PlayerActivity extends AppCompatActivity {
         });
     }
 
-    /** Botão "próximo" dos controles: toca o primeiro vídeo relacionado. */
+    /**
+     * Botão "próximo": numa série, o próximo episódio; senão, o primeiro relacionado.
+     */
     private void playNextRelated() {
         final StreamInfo info = currentInfo;
         if (info == null) {
+            return;
+        }
+        if (com.kamarguinho.supertube.player.PlayQueue.contains(info.getUrl())) {
+            Bg.run(() -> com.kamarguinho.supertube.player.PlayQueue.nextAfter(info.getUrl()),
+                    new Bg.Callback<String>() {
+                        @Override
+                        public void onResult(final String next) {
+                            if (next != null) {
+                                load(next);
+                            } else {
+                                playFirstRelated(info);
+                            }
+                        }
+
+                        @Override
+                        public void onError(final Throwable error) {
+                            playFirstRelated(info);
+                        }
+                    });
+            return;
+        }
+        playFirstRelated(info);
+    }
+
+    private void playFirstRelated(final StreamInfo info) {
+        if (info != currentInfo) {
             return;
         }
         for (final org.schabi.newpipe.extractor.InfoItem item : info.getRelatedItems()) {

@@ -245,9 +245,39 @@ public class TvPlayerActivity extends AppCompatActivity {
         });
     }
 
-    /** No fim do vídeo, toca o primeiro relacionado (como no YouTube da TV). */
+    /**
+     * Próximo vídeo: o próximo episódio quando está assistindo uma série;
+     * senão, o primeiro relacionado (como no YouTube da TV).
+     */
     private void playNext() {
         if (current == null) {
+            return;
+        }
+        final StreamInfo now = current;
+        if (com.kamarguinho.supertube.player.PlayQueue.contains(now.getUrl())) {
+            Bg.run(() -> com.kamarguinho.supertube.player.PlayQueue.nextAfter(now.getUrl()),
+                    new Bg.Callback<String>() {
+                        @Override
+                        public void onResult(final String next) {
+                            if (next != null) {
+                                load(next);
+                            } else {
+                                playRelated(now);
+                            }
+                        }
+
+                        @Override
+                        public void onError(final Throwable error) {
+                            playRelated(now);
+                        }
+                    });
+            return;
+        }
+        playRelated(now);
+    }
+
+    private void playRelated(final StreamInfo now) {
+        if (now != current) {
             return;
         }
         for (final InfoItem item : current.getRelatedItems()) {

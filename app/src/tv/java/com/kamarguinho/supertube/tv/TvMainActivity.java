@@ -72,6 +72,7 @@ public class TvMainActivity extends AppCompatActivity {
             {"Ao vivo", "ao vivo agora"},
             {"Podcasts", "podcast"},
             {"Filmes", Movies.QUERY},
+            {"Séries", com.kamarguinho.supertube.data.Series.QUERY},
             {"Esportes", "esportes melhores momentos"},
             {"Humor", "humor comédia"},
             {"Infantil", "desenho infantil"},
@@ -111,6 +112,7 @@ public class TvMainActivity extends AppCompatActivity {
     private final List<TextView> chips = new ArrayList<>();
     private TvAdapters.RowsAdapter rowsAdapter;
     private final TvAdapters.RowsAdapter moviesRows = new TvAdapters.RowsAdapter();
+    private final TvAdapters.SeriesRowsAdapter seriesRows = new TvAdapters.SeriesRowsAdapter();
     private final TvAdapters.VideoAdapter categoryGrid = new TvAdapters.VideoAdapter(true);
     private int chipSelected = 0;
     private int homeToken = 0;
@@ -412,6 +414,26 @@ public class TvMainActivity extends AppCompatActivity {
             return;
         }
 
+        if (com.kamarguinho.supertube.data.Series.QUERY.equals(CATEGORIES[index][1])) {
+            // Séries: uma fileira por gênero
+            homeList.setLayoutManager(new LinearLayoutManager(this));
+            homeList.setAdapter(seriesRows);
+            if (seriesRows.size() == 0) {
+                final List<TvAdapters.SeriesRow> rows = new ArrayList<>();
+                rows.add(new TvAdapters.SeriesRow(getString(R.string.series_all),
+                        com.kamarguinho.supertube.data.Series.pagerFor(
+                                com.kamarguinho.supertube.data.Series.QUERY)));
+                for (final String[] g : com.kamarguinho.supertube.data.Series.GENRES) {
+                    rows.add(new TvAdapters.SeriesRow(g[0],
+                            com.kamarguinho.supertube.data.Series.pagerFor(
+                                    com.kamarguinho.supertube.data.Series.genreQuery(g[0]))));
+                }
+                seriesRows.set(rows);
+            }
+            progress.setVisibility(View.GONE);
+            message.setVisibility(View.GONE);
+            return;
+        }
         if (Movies.QUERY.equals(CATEGORIES[index][1])) {
             // Filmes: uma fileira por gênero (cada uma sem fim para o lado)
             homeList.setLayoutManager(new LinearLayoutManager(this));

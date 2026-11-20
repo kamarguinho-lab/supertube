@@ -29,8 +29,31 @@ public class ItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     private static final int TYPE_STREAM = 0;
     private static final int TYPE_CHANNEL = 1;
+    private static final int TYPE_PLAYLIST = 2;
 
     private final List<InfoItem> items = new ArrayList<>();
+
+    /** Clique personalizado em vídeos (ex.: episódios de uma série). */
+    public interface OnStreamClick {
+        void onClick(StreamInfoItem item);
+    }
+
+    OnStreamClick streamClick;
+
+    public void setOnStreamClick(final OnStreamClick listener) {
+        streamClick = listener;
+    }
+
+    /** Vídeos da lista, na ordem. */
+    public List<StreamInfoItem> streams() {
+        final List<StreamInfoItem> out = new ArrayList<>();
+        for (final InfoItem i : items) {
+            if (i instanceof StreamInfoItem) {
+                out.add((StreamInfoItem) i);
+            }
+        }
+        return out;
+    }
 
     public void set(final List<? extends InfoItem> newItems) {
         items.clear();
@@ -46,7 +69,8 @@ public class ItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     private void addFiltered(final List<? extends InfoItem> list) {
         for (final InfoItem i : list) {
-            if (i instanceof StreamInfoItem || i instanceof ChannelInfoItem) {
+            if (i instanceof StreamInfoItem || i instanceof ChannelInfoItem
+                    || i instanceof org.schabi.newpipe.extractor.playlist.PlaylistInfoItem) {
                 items.add(i);
             }
         }
@@ -59,7 +83,12 @@ public class ItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     @Override
     public int getItemViewType(final int position) {
-        return items.get(position) instanceof ChannelInfoItem ? TYPE_CHANNEL : TYPE_STREAM;
+        final InfoItem i = items.get(position);
+        if (i instanceof ChannelInfoItem) {
+            return TYPE_CHANNEL;
+        }
+        return i instanceof org.schabi.newpipe.extractor.playlist.PlaylistInfoItem
+                ? TYPE_PLAYLIST : TYPE_STREAM;
     }
 
     @Override
@@ -75,7 +104,10 @@ public class ItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         if (viewType == TYPE_CHANNEL) {
             return new ChannelHolder(inflater.inflate(R.layout.item_channel, parent, false));
         }
-        return new StreamHolder(inflater.inflate(R.layout.item_stream, parent, false));
+        if (viewType == TYPE_PLAYLIST) {
+            return new PlaylistHolder(inflater.inflate(R.layout.item_stream, parent, false));
+        }
+        return new StreamHolder(inflater.inflate(R.layout.item_stream, parent, false), this);
     }
 
     @Override
@@ -84,6 +116,9 @@ public class ItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         final InfoItem item = items.get(position);
         if (holder instanceof StreamHolder) {
             ((StreamHolder) holder).bind((StreamInfoItem) item);
+        } else if (holder instanceof PlaylistHolder) {
+            ((PlaylistHolder) holder).bind(
+                    (org.schabi.newpipe.extractor.playlist.PlaylistInfoItem) item);
         } else {
             ((ChannelHolder) holder).bind((ChannelInfoItem) item);
         }
@@ -97,8 +132,11 @@ public class ItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         final TextView title;
         final TextView subtitle;
 
-        StreamHolder(final View v) {
+        final ItemAdapter owner;
+
+        StreamHolder(final View v, final ItemAdapter owner) {
             super(v);
+            this.owner = owner;
             thumb = v.findViewById(R.id.thumb);
             avatar = v.findViewById(R.id.avatar);
             watched = v.findViewById(R.id.watch_progress);
@@ -160,7 +198,13 @@ public class ItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             watched.setVisibility(p > 0.01f ? View.VISIBLE : View.GONE);
             watched.setProgress((int) (p * 1000));
 
-            itemView.setOnClickListener(v -> PlayerActivity.open(ctx, item.getUrl()));
+            itemView.setOnClickListener(v -> {
+                if (owner.streamClick != null) {
+                    owner.streamClick.onClick(item);
+                } else {
+                    PlayerActivity.open(ctx, item.getUrl());
+                }
+            });
             itemView.setOnLongClickListener(v -> {
                 if (item.getUploaderUrl() != null) {
                     ChannelActivity.open(ctx, item.getServiceId(), item.getUploaderUrl());
@@ -169,6 +213,45 @@ public class ItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                 }
                 return true;
             });
+        }
+    }
+
+    /** Série (playlist): miniatura grande com o número de episódios. */
+    static class PlaylistHolder extends RecyclerView.ViewHolder {
+        final ImageView thumb;
+        final ImageView avatar;
+        final TextView badge;
+        final TextView title;
+        final TextView subtitle;
+
+        PlaylistHolder(final View v) {
+            super(v);
+            thumb = v.findViewById(R.id.thumb);
+            avatar = v.findViewById(R.id.avatar);
+            badge = v.findViewById(R.id.duration);
+            title = v.findViewById(R.id.title);
+            subtitle = v.findViewById(R.id.subtitle);
+            v.findViewById(R.id.watch_progress).setVisibility(View.GONE);
+            avatar.setVisibility(View.GONE);
+        }
+
+        void bind(final org.schabi.newpipe.extractor.playlist.PlaylistInfoItem item) {
+            final Context ctx = itemView.getContext();
+            final int width = itemView.getResources().getDisplayMetrics().widthPixels;
+            final ViewGroup.LayoutParams lp = thumb.getLayoutParams();
+            if (lp.height != width * 9 / 16) {
+                lp.height = width * 9 / 16;
+                thumb.setLayoutParams(lp);
+            }
+            title.setText(item.getName());
+            subtitle.setText(item.getUploaderName() != null ? item.getUploaderName() : "");
+            final long n = item.getStreamCount();
+            badge.setText(n > 0 ? "▶ " + n + " episódios" : "Série");
+            badge.setVisibility(View.VISIBLE);
+            Glide.with(ctx).load(Images.best(item.getThumbnails()))
+                    .placeholder(R.color.thumb_placeholder).into(thumb);
+            itemView.setOnClickListener(v ->
+                    SeriesActivity.open(ctx, item.getUrl(), item.getName()));
         }
     }
 

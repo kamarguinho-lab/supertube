@@ -44,6 +44,7 @@ import com.kamarguinho.supertube.data.Favorites;
 import com.kamarguinho.supertube.data.Feed;
 import com.kamarguinho.supertube.data.History;
 import com.kamarguinho.supertube.data.Movies;
+import com.kamarguinho.supertube.data.Series;
 import com.kamarguinho.supertube.data.Pagers;
 import com.kamarguinho.supertube.data.Trending;
 import com.kamarguinho.supertube.data.Importer;
@@ -72,7 +73,8 @@ public class MainActivity extends AppCompatActivity {
     private View brandBar;
     private View chipsScroll;
     private View genreScroll;
-    private Chip firstGenreChip;
+    private ChipGroup genreGroup;
+    private Series.Pager seriesPager;
     private BottomNavigationView nav;
     private boolean searchOpen = false;
     private String lastChipQuery = null;
@@ -86,6 +88,7 @@ public class MainActivity extends AppCompatActivity {
             {"Ao vivo", "ao vivo agora"},
             {"Podcasts", "podcast"},
             {"Filmes", Movies.QUERY},
+            {"Séries", Series.QUERY},
             {"Esportes", "esportes melhores momentos"},
             {"Humor", "humor comédia"},
             {"Aprender", "como fazer tutorial"},
@@ -307,27 +310,10 @@ public class MainActivity extends AppCompatActivity {
                 chip.setChecked(true);
             }
         }
-        // Gêneros que aparecem dentro de "Filmes"
+        // Gêneros que aparecem dentro de "Filmes" e "Séries"
         genreScroll = findViewById(R.id.genre_scroll);
         final ChipGroup genres = findViewById(R.id.genre_chips);
-        final String[][] genreList = new String[Movies.GENRES.length + 1][];
-        genreList[0] = new String[]{getString(R.string.movies_all), Movies.QUERY};
-        for (int i = 0; i < Movies.GENRES.length; i++) {
-            genreList[i + 1] = new String[]{Movies.GENRES[i][0],
-                    Movies.genreQuery(Movies.GENRES[i][0])};
-        }
-        for (int i = 0; i < genreList.length; i++) {
-            final Chip chip = (Chip) LayoutInflater.from(this)
-                    .inflate(R.layout.chip_category, genres, false);
-            chip.setId(View.generateViewId());
-            chip.setText(genreList[i][0]);
-            chip.setTag(genreList[i][1]);
-            genres.addView(chip);
-            if (i == 0) {
-                chip.setChecked(true);
-                firstGenreChip = chip;
-            }
-        }
+        genreGroup = genres;
         genres.setOnCheckedStateChangeListener((group, ids) -> {
             if (ids.isEmpty()) {
                 return;
@@ -348,10 +334,11 @@ public class MainActivity extends AppCompatActivity {
                 closeSearch();
                 lastChipQuery = (String) chip.getTag();
                 final boolean movies = Movies.QUERY.equals(lastChipQuery);
-                genreScroll.setVisibility(movies ? View.VISIBLE : View.GONE);
-                if (movies && !firstGenreChip.isChecked()) {
-                    // volta para "Todos os filmes" (o listener do gênero faz a busca)
-                    firstGenreChip.setChecked(true);
+                final boolean series = Series.QUERY.equals(lastChipQuery);
+                genreScroll.setVisibility(movies || series ? View.VISIBLE : View.GONE);
+                if (movies || series) {
+                    // Monta os gêneros desta categoria; o primeiro ("Todos") já busca
+                    fillGenres(movies);
                     return;
                 }
                 search(lastChipQuery);
@@ -555,8 +542,9 @@ public class MainActivity extends AppCompatActivity {
         searchBar.setVisibility(searchOpen ? View.VISIBLE : View.GONE);
         brandBar.setVisibility(searchOpen ? View.GONE : View.VISIBLE);
         chipsScroll.setVisibility(View.VISIBLE);
-        genreScroll.setVisibility(lastChipQuery != null && lastChipQuery.startsWith(Movies.QUERY)
-                ? View.VISIBLE : View.GONE);
+        genreScroll.setVisibility(lastChipQuery != null
+                && (lastChipQuery.startsWith(Movies.QUERY)
+                || lastChipQuery.startsWith(Series.QUERY)) ? View.VISIBLE : View.GONE);
         list.setAdapter(searchAdapter);
         if (searchAdapter.getItemCount() == 0) {
             message.setText(R.string.search_hint_message);
@@ -597,6 +585,42 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /** Botões de gênero (Filmes ou Séries). */
+    private void fillGenres(final boolean movies) {
+        final String[][] source = movies ? Movies.GENRES : Series.GENRES;
+        genreGroup.setOnCheckedStateChangeListener(null);
+        genreGroup.removeAllViews();
+        for (int i = 0; i <= source.length; i++) {
+            final Chip chip = (Chip) LayoutInflater.from(this)
+                    .inflate(R.layout.chip_category, genreGroup, false);
+            chip.setId(View.generateViewId());
+            if (i == 0) {
+                chip.setText(movies ? R.string.movies_all : R.string.series_all);
+                chip.setTag(movies ? Movies.QUERY : Series.QUERY);
+            } else {
+                chip.setText(source[i - 1][0]);
+                chip.setTag(movies ? Movies.genreQuery(source[i - 1][0])
+                        : Series.genreQuery(source[i - 1][0]));
+            }
+            genreGroup.addView(chip);
+            if (i == 0) {
+                chip.setChecked(true);
+            }
+        }
+        genreGroup.setOnCheckedStateChangeListener((group, ids) -> {
+            if (ids.isEmpty()) {
+                return;
+            }
+            final Chip chip = group.findViewById(ids.get(0));
+            if (chip != null) {
+                lastChipQuery = (String) chip.getTag();
+                search(lastChipQuery);
+            }
+        });
+        lastChipQuery = movies ? Movies.QUERY : Series.QUERY;
+        search(lastChipQuery);
+    }
+
     private void search(final String q) {
         hideKeyboard();
         final int token = ++searchToken;
@@ -604,6 +628,46 @@ public class MainActivity extends AppCompatActivity {
         message.setVisibility(View.GONE);
         progress.setVisibility(View.VISIBLE);
         lastQueryText = q;
+        seriesPager = null;
+        if (q.startsWith(Series.QUERY)) {
+            // Séries: lista de séries (cada uma abre a página de episódios)
+            final Series.Pager sp = Series.pagerFor(q);
+            seriesPager = sp;
+            searchPager = null;
+            loadingMore = true;
+            Bg.run(sp::next, new Bg.Callback<List<org.schabi.newpipe.extractor.playlist.PlaylistInfoItem>>() {
+                @Override
+                public void onResult(
+                        final List<org.schabi.newpipe.extractor.playlist.PlaylistInfoItem> r) {
+                    if (token != searchToken) {
+                        return;
+                    }
+                    loadingMore = false;
+                    searchAdapter.set(r);
+                    if (feedMode || favMode || accountMode || historyMode) {
+                        return;
+                    }
+                    progress.setVisibility(View.GONE);
+                    if (r.isEmpty()) {
+                        message.setText(R.string.no_results);
+                        message.setVisibility(View.VISIBLE);
+                    }
+                }
+
+                @Override
+                public void onError(final Throwable error) {
+                    if (token != searchToken) {
+                        return;
+                    }
+                    loadingMore = false;
+                    progress.setVisibility(View.GONE);
+                    message.setText(getString(R.string.error_prefix,
+                            Images.errorMessage(error)));
+                    message.setVisibility(View.VISIBLE);
+                }
+            });
+            return;
+        }
         // Busca normal, "Em alta" ou "Filmes": todas sem fim (vão carregando ao rolar)
         final Pagers.Pager pager = Pagers.forQuery(q);
         searchPager = pager;
@@ -643,6 +707,32 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void loadMore() {
+        final Series.Pager sp = seriesPager;
+        if (sp != null) {
+            if (loadingMore || !sp.hasMore()) {
+                return;
+            }
+            loadingMore = true;
+            final int token = searchToken;
+            Bg.run(sp::next, new Bg.Callback<List<org.schabi.newpipe.extractor.playlist.PlaylistInfoItem>>() {
+                @Override
+                public void onResult(
+                        final List<org.schabi.newpipe.extractor.playlist.PlaylistInfoItem> r) {
+                    if (token == searchToken) {
+                        loadingMore = false;
+                        searchAdapter.add(r);
+                    }
+                }
+
+                @Override
+                public void onError(final Throwable error) {
+                    if (token == searchToken) {
+                        loadingMore = false;
+                    }
+                }
+            });
+            return;
+        }
         final Pagers.Pager pager = searchPager;
         if (loadingMore || pager == null || !pager.hasMore()) {
             return;

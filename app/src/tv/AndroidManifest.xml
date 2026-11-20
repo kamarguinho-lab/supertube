@@ -37,6 +37,11 @@
             android:screenOrientation="landscape" />
 
         <activity
+            android:name=".tv.TvSeriesActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+
+        <activity
             android:name=".tv.TvPlayerActivity"
             android:exported="false"
             android:launchMode="singleTop"

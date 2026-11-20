@@ -184,9 +184,15 @@ final class TvAdapters {
 
     // ---------------- Cards de vídeo ----------------
 
+    interface OnVideoClick {
+        void onClick(StreamInfoItem item);
+    }
+
     static class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.Holder> {
         private final List<StreamInfoItem> items = new ArrayList<>();
         private final boolean grid;
+        /** Se definido, substitui o clique padrão (ex.: episódios de uma série). */
+        OnVideoClick clickOverride;
 
         VideoAdapter(final boolean grid) {
             this.grid = grid;
@@ -219,7 +225,7 @@ final class TvAdapters {
                 v.setLayoutParams(lp);
             }
             focusZoom(v, 1.08f);
-            return new Holder(v, grid);
+            return new Holder(v, grid, this);
         }
 
         @Override
@@ -240,10 +246,12 @@ final class TvAdapters {
             final TextView subtitle;
             final android.widget.ProgressBar watched;
             final boolean grid;
+            final VideoAdapter owner;
 
-            Holder(final View v, final boolean grid) {
+            Holder(final View v, final boolean grid, final VideoAdapter owner) {
                 super(v);
                 this.grid = grid;
+                this.owner = owner;
                 thumbBox = v.findViewById(R.id.thumb_box);
                 thumb = v.findViewById(R.id.thumb);
                 duration = v.findViewById(R.id.duration);
@@ -301,7 +309,13 @@ final class TvAdapters {
                 watched.setVisibility(p > 0.01f ? View.VISIBLE : View.GONE);
                 watched.setProgress((int) (p * 1000));
 
-                itemView.setOnClickListener(v -> TvPlayerActivity.open(ctx, item.getUrl()));
+                itemView.setOnClickListener(v -> {
+                    if (owner.clickOverride != null) {
+                        owner.clickOverride.onClick(item);
+                    } else {
+                        TvPlayerActivity.open(ctx, item.getUrl());
+                    }
+                });
                 itemView.setOnLongClickListener(v -> {
                     if (item.getUploaderUrl() != null) {
                         TvChannelActivity.open(ctx, item.getServiceId(), item.getUploaderUrl());
@@ -459,6 +473,178 @@ final class TvAdapters {
                 list = v.findViewById(R.id.row_list);
                 progress = v.findViewById(R.id.row_progress);
             }
+        }
+    }
+
+    // ---------------- Séries (playlists) ----------------
+
+    static class SeriesAdapter extends RecyclerView.Adapter<SeriesAdapter.Holder> {
+        private final List<org.schabi.newpipe.extractor.playlist.PlaylistInfoItem> items =
+                new ArrayList<>();
+
+        void add(final List<org.schabi.newpipe.extractor.playlist.PlaylistInfoItem> list) {
+            final int start = items.size();
+            items.addAll(list);
+            notifyItemRangeInserted(start, list.size());
+        }
+
+        @NonNull
+        @Override
+        public Holder onCreateViewHolder(@NonNull final ViewGroup parent, final int viewType) {
+            final View v = LayoutInflater.from(parent.getContext())
+                    .inflate(R.layout.tv_card, parent, false);
+            focusZoom(v, 1.08f);
+            return new Holder(v);
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull final Holder h, final int position) {
+            final org.schabi.newpipe.extractor.playlist.PlaylistInfoItem item =
+                    items.get(position);
+            final Context ctx = h.itemView.getContext();
+            h.title.setText(item.getName());
+            h.subtitle.setText(item.getUploaderName() != null ? item.getUploaderName() : "");
+            final long n = item.getStreamCount();
+            h.badge.setText(n > 0 ? n + " episódios" : "Série");
+            h.badge.setVisibility(View.VISIBLE);
+            final int radius = (int) (10 * ctx.getResources().getDisplayMetrics().density);
+            Glide.with(ctx).load(Images.best(item.getThumbnails()))
+                    .apply(new RequestOptions().transform(new CenterCrop(),
+                            new RoundedCorners(radius)))
+                    .placeholder(R.drawable.tv_thumb_placeholder)
+                    .into(h.thumb);
+            h.itemView.setOnClickListener(v ->
+                    TvSeriesActivity.open(ctx, item.getUrl(), item.getName()));
+        }
+
+        @Override
+        public int getItemCount() {
+            return items.size();
+        }
+
+        static class Holder extends RecyclerView.ViewHolder {
+            final ImageView thumb;
+            final TextView badge;
+            final TextView title;
+            final TextView subtitle;
+
+            Holder(final View v) {
+                super(v);
+                thumb = v.findViewById(R.id.thumb);
+                badge = v.findViewById(R.id.duration);
+                title = v.findViewById(R.id.title);
+                subtitle = v.findViewById(R.id.subtitle);
+                v.findViewById(R.id.watch_progress).setVisibility(View.GONE);
+            }
+        }
+    }
+
+    static final class SeriesRow {
+        final String title;
+        final SeriesAdapter adapter = new SeriesAdapter();
+        final com.kamarguinho.supertube.data.Series.Pager pager;
+        boolean loading = true;
+        boolean busy = false;
+
+        SeriesRow(final String title, final com.kamarguinho.supertube.data.Series.Pager pager) {
+            this.title = title;
+            this.pager = pager;
+        }
+    }
+
+    /** Fileiras de séries por gênero (cada uma sem fim para o lado). */
+    static class SeriesRowsAdapter extends RecyclerView.Adapter<RowsAdapter.Holder> {
+        private final List<SeriesRow> rows = new ArrayList<>();
+        private final RecyclerView.RecycledViewPool pool = new RecyclerView.RecycledViewPool();
+
+        void set(final List<SeriesRow> list) {
+            rows.clear();
+            rows.addAll(list);
+            notifyDataSetChanged();
+        }
+
+        int size() {
+            return rows.size();
+        }
+
+        void loadMore(final SeriesRow row) {
+            if (row.busy || (!row.loading && !row.pager.hasMore())) {
+                return;
+            }
+            row.busy = true;
+            Bg.run(row.pager::next,
+                    new Bg.Callback<List<org.schabi.newpipe.extractor.playlist.PlaylistInfoItem>>() {
+                        @Override
+                        public void onResult(
+                                final List<org.schabi.newpipe.extractor.playlist.PlaylistInfoItem>
+                                        items) {
+                            row.busy = false;
+                            row.adapter.add(items);
+                            if (row.loading) {
+                                row.loading = false;
+                                final int i = rows.indexOf(row);
+                                if (i >= 0) {
+                                    if (row.adapter.getItemCount() == 0) {
+                                        rows.remove(i);
+                                        notifyItemRemoved(i);
+                                    } else {
+                                        notifyItemChanged(i);
+                                    }
+                                }
+                            }
+                        }
+
+                        @Override
+                        public void onError(final Throwable error) {
+                            row.busy = false;
+                            if (row.loading) {
+                                row.loading = false;
+                                final int i = rows.indexOf(row);
+                                if (i >= 0) {
+                                    rows.remove(i);
+                                    notifyItemRemoved(i);
+                                }
+                            }
+                        }
+                    });
+        }
+
+        @NonNull
+        @Override
+        public RowsAdapter.Holder onCreateViewHolder(@NonNull final ViewGroup parent,
+                                                     final int viewType) {
+            final View v = LayoutInflater.from(parent.getContext())
+                    .inflate(R.layout.tv_row, parent, false);
+            final RowsAdapter.Holder h = new RowsAdapter.Holder(v);
+            h.list.setLayoutManager(new LinearLayoutManager(parent.getContext(),
+                    LinearLayoutManager.HORIZONTAL, false));
+            h.list.setRecycledViewPool(pool);
+            h.list.setItemAnimator(null);
+            endless(h.list, () -> {
+                final int pos = h.getBindingAdapterPosition();
+                if (pos >= 0 && pos < rows.size()) {
+                    loadMore(rows.get(pos));
+                }
+            });
+            return h;
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull final RowsAdapter.Holder h, final int position) {
+            final SeriesRow row = rows.get(position);
+            h.title.setText(row.title);
+            if (h.list.getAdapter() != row.adapter) {
+                h.list.setAdapter(row.adapter);
+            }
+            h.progress.setVisibility(row.loading ? View.VISIBLE : View.GONE);
+            if (row.loading && !row.busy && row.adapter.getItemCount() == 0) {
+                loadMore(row);
+            }
+        }
+
+        @Override
+        public int getItemCount() {
+            return rows.size();
         }
     }
 

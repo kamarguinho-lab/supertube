@@ -48,6 +48,10 @@
             android:name=".ui.ChannelActivity"
             android:exported="false" />
 
+        <activity
+            android:name=".ui.SeriesActivity"
+            android:exported="false" />
+
         <service
             android:name=".player.PlayerService"
             android:exported="false"

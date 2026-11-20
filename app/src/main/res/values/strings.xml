@@ -96,4 +96,6 @@
     <string name="audio_dub">Áudio / Dublagem</string>
     <string name="audio_dub_short">Áudio</string>
     <string name="audio_dub_none">Este vídeo só tem o áudio original. A dublagem aparece aqui quando o YouTube oferece outros idiomas para o vídeo.</string>
+    <string name="series_all">Todas as séries</string>
+    <string name="series_play">▶  Assistir do início</string>
 </resources>
