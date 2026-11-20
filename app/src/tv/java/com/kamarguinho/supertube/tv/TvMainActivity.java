@@ -122,7 +122,7 @@ public class TvMainActivity extends AppCompatActivity {
 
     // Inscrições / Favoritos
     private TextView listTitle;
-    private View listActions;
+    private ViewGroup listActions;
     private TextView historyPause;
     private RecyclerView youSection;
     private final TvAdapters.RowsAdapter youRows = new TvAdapters.RowsAdapter();
