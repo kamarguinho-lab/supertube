@@ -31,6 +31,7 @@ import com.kamarguinho.supertube.data.Favorites;
 import com.kamarguinho.supertube.data.History;
 import com.kamarguinho.supertube.data.Subscriptions;
 import com.kamarguinho.supertube.player.MediaResolver;
+import com.kamarguinho.supertube.player.Quality;
 import com.kamarguinho.supertube.player.RelatedPlayer;
 import com.kamarguinho.supertube.player.SeekHelper;
 import com.kamarguinho.supertube.player.Subtitles;
@@ -49,7 +50,8 @@ import org.schabi.newpipe.extractor.stream.StreamInfoItem;
 public class TvPlayerActivity extends AppCompatActivity {
 
     private static final String EXTRA_URL = "url";
-    private static final int MAX_HEIGHT = 1080;
+    private int exactHeight = 0;
+    private int playingHeight = 0;
 
     private ExoPlayer player;
     private RelatedPlayer relatedPlayer;
@@ -73,6 +75,7 @@ public class TvPlayerActivity extends AppCompatActivity {
     private View actionSubscribe;
     private View actionNext;
     private View actionSubtitles;
+    private View actionQuality;
     private Subtitles.Option currentSubtitle;
     private View panelBox;
     private View panelScrim;
@@ -167,6 +170,7 @@ public class TvPlayerActivity extends AppCompatActivity {
             return;
         }
         saveProgress();
+        exactHeight = 0;
         final int t = ++token;
         hidePanel();
         rowsAdapter.clear();
@@ -182,7 +186,7 @@ public class TvPlayerActivity extends AppCompatActivity {
             final StreamInfo info = StreamInfo.getInfo(NewPipe.getServiceByUrl(url), url);
             final Subtitles.Option sub = Subtitles.pick(info,
                     Subtitles.mode(TvPlayerActivity.this));
-            return new Object[]{info, resolver.resolve(info, MAX_HEIGHT, false, sub), sub};
+            return new Object[]{info, resolver.resolve(info, targetHeight(), false, sub), sub};
         }, new Bg.Callback<Object[]>() {
             @Override
             public void onResult(final Object[] r) {
@@ -211,6 +215,8 @@ public class TvPlayerActivity extends AppCompatActivity {
                 relatedPlayer.setHasNext(!current.getRelatedItems().isEmpty());
                 currentSubtitle = (Subtitles.Option) r[2];
                 Subtitles.select(player, currentSubtitle);
+                playingHeight = resolver.lastHeight;
+                updateQualityLabel();
                 // Continua de onde parou e grava no histórico
                 final long resume = History.resumePosition(TvPlayerActivity.this, url);
                 History.record(TvPlayerActivity.this, current);
@@ -279,6 +285,10 @@ public class TvPlayerActivity extends AppCompatActivity {
         setAction(actionSubtitles, R.drawable.ic_subtitles, R.string.subtitles);
         TvAdapters.focusZoom(actionSubtitles, 1.06f);
         actionSubtitles.setOnClickListener(v -> chooseSubtitle());
+        actionQuality = findViewById(R.id.action_quality);
+        setAction(actionQuality, R.drawable.ic_settings, R.string.quality);
+        TvAdapters.focusZoom(actionQuality, 1.06f);
+        actionQuality.setOnClickListener(v -> chooseQuality());
 
         setAction(actionChannel, R.drawable.ic_account_outline, R.string.tv_go_channel);
         setAction(actionNext, R.drawable.ic_skip_next, R.string.tv_next);
@@ -443,6 +453,50 @@ public class TvPlayerActivity extends AppCompatActivity {
         updateActions();
     }
 
+    private int targetHeight() {
+        return exactHeight > 0 ? exactHeight
+                : Quality.maxHeight(this, Quality.mode(this), true);
+    }
+
+    private void updateQualityLabel() {
+        ((TextView) actionQuality.findViewById(R.id.action_label)).setText(
+                playingHeight > 0 ? getString(R.string.quality) + " · " + playingHeight + "p"
+                        : getString(R.string.quality));
+    }
+
+    private void chooseQuality() {
+        final StreamInfo info = current;
+        if (info == null) {
+            return;
+        }
+        Quality.showMenu(this, info, true, playingHeight, exactHeight > 0, (height, exact) -> {
+            exactHeight = exact ? height : 0;
+            final long position = player.getCurrentPosition();
+            final int t = token;
+            Bg.run(() -> resolver.resolve(info, targetHeight(), false, currentSubtitle),
+                    new Bg.Callback<MediaSource>() {
+                        @Override
+                        public void onResult(final MediaSource source) {
+                            if (t != token) {
+                                return;
+                            }
+                            playingHeight = resolver.lastHeight;
+                            updateQualityLabel();
+                            player.setMediaSource(source, position);
+                            player.prepare();
+                            player.play();
+                            hidePanel();
+                        }
+
+                        @Override
+                        public void onError(final Throwable error) {
+                            Toast.makeText(TvPlayerActivity.this, Images.errorMessage(error),
+                                    Toast.LENGTH_LONG).show();
+                        }
+                    });
+        });
+    }
+
     private void chooseSubtitle() {
         final StreamInfo info = current;
         if (info == null) {
@@ -452,7 +506,7 @@ public class TvPlayerActivity extends AppCompatActivity {
             currentSubtitle = chosen;
             final long position = player.getCurrentPosition();
             final int t = token;
-            Bg.run(() -> resolver.resolve(info, MAX_HEIGHT, false, chosen),
+            Bg.run(() -> resolver.resolve(info, targetHeight(), false, chosen),
                     new Bg.Callback<MediaSource>() {
                         @Override
                         public void onResult(final MediaSource source) {
@@ -516,7 +570,7 @@ public class TvPlayerActivity extends AppCompatActivity {
                 final View focus = getCurrentFocus();
                 final boolean onActions = focus == actionFavorite || focus == actionChannel
                         || focus == actionSubscribe || focus == actionNext
-                        || focus == actionSubtitles;
+                        || focus == actionSubtitles || focus == actionQuality;
                 if (k == KeyEvent.KEYCODE_DPAD_UP && onActions) {
                     hidePanel();
                     return true;

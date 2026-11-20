@@ -46,6 +46,7 @@ import com.kamarguinho.supertube.data.History;
 import com.kamarguinho.supertube.data.Subscriptions;
 import com.kamarguinho.supertube.player.MediaResolver;
 import com.kamarguinho.supertube.player.PlayerService;
+import com.kamarguinho.supertube.player.Quality;
 import com.kamarguinho.supertube.player.RelatedPlayer;
 import com.kamarguinho.supertube.player.SeekHelper;
 import com.kamarguinho.supertube.player.Subtitles;
@@ -64,7 +65,9 @@ import java.util.regex.Pattern;
 public class PlayerActivity extends AppCompatActivity {
 
     private static final String EXTRA_URL = "url";
-    private static final int MAX_HEIGHT = 1080;
+    /** Resolução escolhida em "Avançado" (vale só para o vídeo atual). */
+    private int exactHeight = 0;
+    private int playingHeight = 0;
     private static final Pattern URL_PATTERN = Pattern.compile("https?://\\S+");
 
     /** Último vídeo carregado (para voltar à tela sem recarregar). */
@@ -147,6 +150,7 @@ public class PlayerActivity extends AppCompatActivity {
         title.setOnClickListener(v -> toggleDescription());
         findViewById(R.id.share).setOnClickListener(v -> share());
         findViewById(R.id.subtitles).setOnClickListener(v -> chooseSubtitle());
+        findViewById(R.id.quality).setOnClickListener(v -> chooseQuality());
         uploaderAvatar = findViewById(R.id.uploader_avatar);
         subscribeButton = findViewById(R.id.subscribe);
         audioButton = findViewById(R.id.audio_only);
@@ -233,6 +237,7 @@ public class PlayerActivity extends AppCompatActivity {
 
     private void load(final String url) {
         saveProgress();
+        exactHeight = 0;
         final int token = ++loadToken;
         progress.setVisibility(View.VISIBLE);
         title.setText("");
@@ -249,7 +254,7 @@ public class PlayerActivity extends AppCompatActivity {
             final StreamInfo info = StreamInfo.getInfo(service, url);
             final Subtitles.Option sub = Subtitles.pick(info,
                     Subtitles.mode(PlayerActivity.this));
-            final MediaSource source = resolver.resolve(info, MAX_HEIGHT, audioOnly, sub);
+            final MediaSource source = resolver.resolve(info, targetHeight(), audioOnly, sub);
             return new Object[]{info, source, sub};
         }, new Bg.Callback<Object[]>() {
             @Override
@@ -268,6 +273,8 @@ public class PlayerActivity extends AppCompatActivity {
 
                 currentSubtitle = (Subtitles.Option) r[2];
                 Subtitles.select(player, currentSubtitle);
+                playingHeight = resolver.lastHeight;
+                updateQualityLabel();
                 // Continua de onde parou e grava no histórico
                 final long resume = History.resumePosition(PlayerActivity.this, url);
                 History.record(PlayerActivity.this, info);
@@ -440,7 +447,7 @@ public class PlayerActivity extends AppCompatActivity {
         audioButton.setText(audioOnly ? R.string.video_mode : R.string.audio_only);
         final long position = player.getCurrentPosition();
         final StreamInfo info = currentInfo;
-        Bg.run(() -> resolver.resolve(info, MAX_HEIGHT, audioOnly, currentSubtitle),
+        Bg.run(() -> resolver.resolve(info, targetHeight(), audioOnly, currentSubtitle),
                 new Bg.Callback<MediaSource>() {
                     @Override
                     public void onResult(final MediaSource source) {
@@ -481,6 +488,54 @@ public class PlayerActivity extends AppCompatActivity {
         startActivity(Intent.createChooser(send, getString(R.string.share)));
     }
 
+    // ---------- Qualidade ----------
+
+    private int targetHeight() {
+        return exactHeight > 0 ? exactHeight
+                : Quality.maxHeight(this, Quality.mode(this), false);
+    }
+
+    private void updateQualityLabel() {
+        ((com.google.android.material.button.MaterialButton) findViewById(R.id.quality))
+                .setText(playingHeight > 0 ? getString(R.string.quality) + " · "
+                        + playingHeight + "p" : getString(R.string.quality));
+    }
+
+    private void chooseQuality() {
+        final StreamInfo info = currentInfo;
+        if (info == null) {
+            return;
+        }
+        Quality.showMenu(this, info, false, playingHeight, exactHeight > 0,
+                (height, exact) -> {
+                    exactHeight = exact ? height : 0;
+                    if (audioOnly) {
+                        audioOnly = false;
+                        audioButton.setText(R.string.audio_only);
+                    }
+                    final long position = player.getCurrentPosition();
+                    final boolean playing = player.getPlayWhenReady();
+                    Bg.run(() -> resolver.resolve(info, targetHeight(), false, currentSubtitle),
+                            new Bg.Callback<MediaSource>() {
+                                @Override
+                                public void onResult(final MediaSource source) {
+                                    playingHeight = resolver.lastHeight;
+                                    updateQualityLabel();
+                                    player.setMediaSource(source, position);
+                                    player.prepare();
+                                    player.setPlayWhenReady(playing);
+                                }
+
+                                @Override
+                                public void onError(final Throwable error) {
+                                    Toast.makeText(PlayerActivity.this,
+                                            Images.errorMessage(error),
+                                            Toast.LENGTH_LONG).show();
+                                }
+                            });
+                });
+    }
+
     // ---------- Legendas ----------
 
     private void chooseSubtitle() {
@@ -491,7 +546,7 @@ public class PlayerActivity extends AppCompatActivity {
         Subtitles.showMenu(this, info, currentSubtitle, chosen -> {
             currentSubtitle = chosen;
             final long position = player.getCurrentPosition();
-            Bg.run(() -> resolver.resolve(info, MAX_HEIGHT, audioOnly, chosen),
+            Bg.run(() -> resolver.resolve(info, targetHeight(), audioOnly, chosen),
                     new Bg.Callback<MediaSource>() {
                         @Override
                         public void onResult(final MediaSource source) {

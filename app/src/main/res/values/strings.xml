@@ -82,4 +82,14 @@
     <string name="history_paused_msg">Histórico pausado: os vídeos assistidos não serão guardados.</string>
     <string name="history_clear_confirm">Apagar todo o histórico de visualização deste aparelho?</string>
     <string name="tab_you">Você</string>
+    <string name="quality">Qualidade</string>
+    <string name="quality_title">Qualidade do vídeo</string>
+    <string name="quality_auto">Automática (recomendada)</string>
+    <string name="quality_auto_desc">Ajusta para oferecer a melhor experiência na sua conexão</string>
+    <string name="quality_high">Qualidade de imagem superior</string>
+    <string name="quality_high_desc">Usa mais dados</string>
+    <string name="quality_saver">Economia de dados</string>
+    <string name="quality_saver_desc">Qualidade de imagem inferior</string>
+    <string name="quality_advanced">Avançado</string>
+    <string name="quality_advanced_desc">Selecione uma resolução específica</string>
 </resources>

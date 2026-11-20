@@ -48,6 +48,9 @@ public final class MediaResolver {
     private final DataSource.Factory ytDash;
     private final DataSource.Factory ytProgressive;
 
+    /** Resolução do vídeo escolhido na última vez (0 = só áudio / desconhecida). */
+    public volatile int lastHeight = 0;
+
     public MediaResolver(final Context context) {
         generic = new DefaultDataSource.Factory(context,
                 new DefaultHttpDataSource.Factory().setUserAgent(DownloaderImpl.USER_AGENT));
@@ -105,6 +108,7 @@ public final class MediaResolver {
             throw new Exception("Transmissão ao vivo sem link compatível");
         }
 
+        lastHeight = 0;
         final AudioStream audio = pickAudio(info.getAudioStreams());
 
         if (audioOnly && audio != null) {
@@ -114,6 +118,7 @@ public final class MediaResolver {
         // Melhor qualidade: vídeo sem som + áudio separados, tocados juntos
         final VideoStream videoOnly = pickVideo(info.getVideoOnlyStreams(), maxHeight);
         if (videoOnly != null && audio != null) {
+            lastHeight = videoOnly.getHeight();
             return new MergingMediaSource(true,
                     source(videoOnly, info, youtube), source(audio, info, youtube));
         }
@@ -121,6 +126,7 @@ public final class MediaResolver {
         // Vídeo com som no mesmo arquivo (geralmente 360p)
         final VideoStream muxed = pickVideo(info.getVideoStreams(), maxHeight);
         if (muxed != null) {
+            lastHeight = muxed.getHeight();
             return source(muxed, info, youtube);
         }
         if (audio != null) {
@@ -189,7 +195,7 @@ public final class MediaResolver {
         }
         VideoStream best = null;
         for (final VideoStream v : list) {
-            if (unsupported(v)) {
+            if (unsupported(v) || !Quality.canPlay(v)) {
                 continue;
             }
             final int h = v.getHeight();
