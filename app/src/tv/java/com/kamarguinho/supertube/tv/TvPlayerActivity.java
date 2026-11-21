@@ -304,6 +304,10 @@ public class TvPlayerActivity extends AppCompatActivity {
             playNext();
             return true;
         }
+        if (keyCode == KeyEvent.KEYCODE_MEDIA_PREVIOUS) {
+            player.seekTo(0);
+            return true;
+        }
         return super.onKeyDown(keyCode, event);
     }
 

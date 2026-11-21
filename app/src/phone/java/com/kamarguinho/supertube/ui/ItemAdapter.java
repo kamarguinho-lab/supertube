@@ -253,7 +253,7 @@ public class ItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             title.setText(item.getName());
             subtitle.setText(item.getUploaderName() != null ? item.getUploaderName() : "");
             final long n = item.getStreamCount();
-            badge.setText(n > 0 ? "▶ " + n + " episódios" : "Série");
+            badge.setText(n > 0 ? "▶ " + n + " vídeos" : "Playlist");
             badge.setVisibility(View.VISIBLE);
             Glide.with(ctx).load(Images.best(item.getThumbnails()))
                     .placeholder(R.color.thumb_placeholder).into(thumb);

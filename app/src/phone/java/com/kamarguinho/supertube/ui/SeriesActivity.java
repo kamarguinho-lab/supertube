@@ -59,8 +59,27 @@ public class SeriesActivity extends AppCompatActivity {
         findViewById(R.id.back).setOnClickListener(v -> finish());
         name.setText(title);
         topTitle.setText(title);
-        play.setText(R.string.series_play);
+        play.setText(R.string.series_play_all);
         play.setEnabled(false);
+        findViewById(R.id.section_title).setVisibility(View.GONE);
+
+        // Menu da playlist, como no YouTube: Aleatório e Salvar nas minhas playlists
+        final MaterialButton shuffle = findViewById(R.id.extra1);
+        shuffle.setText(R.string.pl_shuffle);
+        shuffle.setVisibility(View.VISIBLE);
+        shuffle.setOnClickListener(v -> {
+            final List<StreamInfoItem> eps = new java.util.ArrayList<>(adapter.streams());
+            if (!eps.isEmpty()) {
+                java.util.Collections.shuffle(eps);
+                PlayQueue.set(title, eps, null);
+                PlayerActivity.open(this, eps.get(0).getUrl());
+            }
+        });
+        final MaterialButton save = findViewById(R.id.extra2);
+        save.setText(R.string.pl_save_mine);
+        save.setIconResource(R.drawable.ic_playlist_add);
+        save.setVisibility(View.VISIBLE);
+        save.setOnClickListener(v -> saveToMine(url, title));
 
         final RecyclerView list = findViewById(R.id.list);
         list.setLayoutManager(new LinearLayoutManager(this));
@@ -109,7 +128,7 @@ public class SeriesActivity extends AppCompatActivity {
                         if (sb.length() > 0) {
                             sb.append(" • ");
                         }
-                        sb.append(p.getStreamCount()).append(" episódios");
+                        sb.append(p.getStreamCount()).append(" vídeos");
                     }
                     info.setText(sb);
                     final String b = Images.best(p.getThumbnails());
@@ -132,6 +151,37 @@ public class SeriesActivity extends AppCompatActivity {
                 message.setVisibility(View.VISIBLE);
             }
         });
+    }
+
+    /** Copia a playlist inteira do YouTube para as playlists do SuperTube. */
+    private void saveToMine(final String url, final String title) {
+        final androidx.appcompat.app.AlertDialog dialog =
+                new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                        .setTitle(R.string.pl_save_mine)
+                        .setMessage(R.string.pl_importing)
+                        .setCancelable(false)
+                        .show();
+        final String name = pager.info() != null ? pager.info().getName() : title;
+        Bg.run(() -> com.kamarguinho.supertube.data.YtImport.importPlaylist(this, url, name,
+                        text -> runOnUiThread(() -> dialog.setMessage(text))),
+                new Bg.Callback<com.kamarguinho.supertube.data.Playlists.Playlist>() {
+                    @Override
+                    public void onResult(
+                            final com.kamarguinho.supertube.data.Playlists.Playlist p) {
+                        dialog.dismiss();
+                        android.widget.Toast.makeText(SeriesActivity.this,
+                                getString(R.string.pl_imported, p.name, p.videos.size()),
+                                android.widget.Toast.LENGTH_LONG).show();
+                    }
+
+                    @Override
+                    public void onError(final Throwable error) {
+                        dialog.dismiss();
+                        android.widget.Toast.makeText(SeriesActivity.this,
+                                Images.errorMessage(error),
+                                android.widget.Toast.LENGTH_LONG).show();
+                    }
+                });
     }
 
     private void more() {

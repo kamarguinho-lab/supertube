@@ -384,10 +384,11 @@ public class MainActivity extends AppCompatActivity {
         final com.kamarguinho.supertube.data.Playlists store =
                 new com.kamarguinho.supertube.data.Playlists(this);
         final List<com.kamarguinho.supertube.data.Playlists.Playlist> lists = store.all();
-        final String[] names = new String[lists.size() + 1];
+        final String[] names = new String[lists.size() + 2];
         names[0] = getString(R.string.playlist_new);
+        names[1] = getString(R.string.pl_import_link);
         for (int i = 0; i < lists.size(); i++) {
-            names[i + 1] = lists.get(i).name + "  ("
+            names[i + 2] = lists.get(i).name + "  ("
                     + getString(R.string.playlist_videos, lists.get(i).videos.size()) + ")";
         }
         new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
@@ -399,9 +400,74 @@ public class MainActivity extends AppCompatActivity {
                                     store.create(name);
                             PlaylistActivity.open(this, p.id);
                         });
+                    } else if (which == 1) {
+                        importFromLink();
                     } else {
-                        PlaylistActivity.open(this, lists.get(which - 1).id);
+                        PlaylistActivity.open(this, lists.get(which - 2).id);
                     }
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    /** Cola um link de playlist do YouTube e traz todos os vídeos dela. */
+    private void importFromLink() {
+        final EditText input = new EditText(this);
+        input.setHint(R.string.pl_link_hint);
+        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT
+                | android.text.InputType.TYPE_TEXT_VARIATION_URI);
+        // Se já tiver um link copiado, já preenche
+        final android.content.ClipboardManager cb =
+                getSystemService(android.content.ClipboardManager.class);
+        if (cb != null && cb.hasPrimaryClip() && cb.getPrimaryClip() != null
+                && cb.getPrimaryClip().getItemCount() > 0) {
+            final CharSequence clip = cb.getPrimaryClip().getItemAt(0).coerceToText(this);
+            if (clip != null && com.kamarguinho.supertube.data.YtImport
+                    .playlistUrl(clip.toString()) != null) {
+                input.setText(clip);
+            }
+        }
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.pl_import_link)
+                .setView(padded(input))
+                .setPositiveButton(android.R.string.ok, (d, w) -> {
+                    final String url = com.kamarguinho.supertube.data.YtImport.playlistUrl(
+                            input.getText().toString());
+                    if (url == null) {
+                        android.widget.Toast.makeText(this, R.string.pl_link_invalid,
+                                android.widget.Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    final androidx.appcompat.app.AlertDialog progressDialog =
+                            new com.google.android.material.dialog.MaterialAlertDialogBuilder(
+                                    this)
+                                    .setTitle(R.string.pl_import_link)
+                                    .setMessage(R.string.pl_importing)
+                                    .setCancelable(false)
+                                    .show();
+                    Bg.run(() -> com.kamarguinho.supertube.data.YtImport.importPlaylist(this,
+                                    url, null, text -> runOnUiThread(() ->
+                                            progressDialog.setMessage(text))),
+                            new Bg.Callback<com.kamarguinho.supertube.data.Playlists.Playlist>() {
+                                @Override
+                                public void onResult(
+                                        final com.kamarguinho.supertube.data.Playlists.Playlist p) {
+                                    progressDialog.dismiss();
+                                    android.widget.Toast.makeText(MainActivity.this,
+                                            getString(R.string.pl_imported, p.name,
+                                                    p.videos.size()),
+                                            android.widget.Toast.LENGTH_LONG).show();
+                                    PlaylistActivity.open(MainActivity.this, p.id);
+                                }
+
+                                @Override
+                                public void onError(final Throwable error) {
+                                    progressDialog.dismiss();
+                                    android.widget.Toast.makeText(MainActivity.this,
+                                            Images.errorMessage(error),
+                                            android.widget.Toast.LENGTH_LONG).show();
+                                }
+                            });
                 })
                 .setNegativeButton(android.R.string.cancel, null)
                 .show();
@@ -723,7 +789,9 @@ public class MainActivity extends AppCompatActivity {
                     importStatus.setText(R.string.import_nothing);
                 } else {
                     importStatus.setText(getString(R.string.import_result, r.channelsAdded,
-                            r.channelsFound, r.videosAdded, r.videosFound));
+                            r.channelsFound, r.videosAdded, r.videosFound)
+                            + (r.playlistsImported > 0 ? getString(
+                            R.string.import_playlists_extra, r.playlistsImported) : ""));
                 }
             }
 

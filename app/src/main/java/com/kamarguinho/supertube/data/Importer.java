@@ -33,6 +33,7 @@ public final class Importer {
         public int channelsAdded;
         public int videosFound;
         public int videosAdded;
+        public int playlistsImported;
     }
 
     /** Título temporário de vídeos importados só com o ID (é trocado depois). */
@@ -212,7 +213,73 @@ public final class Importer {
             pageToken = json.optString("nextPageToken", null);
         } while (pageToken != null && !pageToken.isEmpty() && videos.size() < MAX_ITEMS);
 
-        return save(context, channels, videos);
+        final Result result = save(context, channels, videos);
+        result.playlistsImported = importAccountPlaylists(context, accessToken);
+        return result;
+    }
+
+    /** As playlists da conta (as que a pessoa criou no YouTube) viram playlists do SuperTube. */
+    private static int importAccountPlaylists(final Context context, final String token) {
+        int done = 0;
+        try {
+            String pageToken = null;
+            final List<String[]> lists = new ArrayList<>();
+            do {
+                final HttpUrl.Builder url = HttpUrl.get(API + "playlists").newBuilder()
+                        .addQueryParameter("part", "snippet")
+                        .addQueryParameter("mine", "true")
+                        .addQueryParameter("maxResults", "50");
+                if (pageToken != null) {
+                    url.addQueryParameter("pageToken", pageToken);
+                }
+                final JSONObject json = get(url.build(), token);
+                final JSONArray items = json.optJSONArray("items");
+                for (int i = 0; items != null && i < items.length(); i++) {
+                    final JSONObject it = items.getJSONObject(i);
+                    lists.add(new String[]{it.getString("id"),
+                            it.getJSONObject("snippet").optString("title", "Playlist")});
+                }
+                pageToken = json.optString("nextPageToken", null);
+            } while (pageToken != null && !pageToken.isEmpty() && lists.size() < 200);
+
+            final Playlists store = new Playlists(context);
+            for (final String[] l : lists) {
+                final List<Favorites.Video> videos = new ArrayList<>();
+                String next = null;
+                do {
+                    final HttpUrl.Builder url = HttpUrl.get(API + "playlistItems").newBuilder()
+                            .addQueryParameter("part", "snippet")
+                            .addQueryParameter("playlistId", l[0])
+                            .addQueryParameter("maxResults", "50");
+                    if (next != null) {
+                        url.addQueryParameter("pageToken", next);
+                    }
+                    final JSONObject json = get(url.build(), token);
+                    final JSONArray items = json.optJSONArray("items");
+                    for (int i = 0; items != null && i < items.length(); i++) {
+                        final JSONObject sn = items.getJSONObject(i).getJSONObject("snippet");
+                        final JSONObject res = sn.optJSONObject("resourceId");
+                        final String vid = res != null ? res.optString("videoId", "") : "";
+                        if (vid.isEmpty()) {
+                            continue;
+                        }
+                        final String t = thumb(sn);
+                        videos.add(new Favorites.Video(0, Favorites.youtubeUrl(vid),
+                                sn.optString("title", vid),
+                                sn.optString("videoOwnerChannelTitle", null),
+                                t != null ? t : Favorites.youtubeThumb(vid)));
+                    }
+                    next = json.optString("nextPageToken", null);
+                } while (next != null && !next.isEmpty() && videos.size() < MAX_ITEMS);
+                if (!videos.isEmpty()) {
+                    store.importVideos(l[1], videos);
+                    done++;
+                }
+            }
+        } catch (final Exception ignored) {
+            // inscrições e curtidos já foram importados; playlists são um extra
+        }
+        return done;
     }
 
     private static String thumb(final JSONObject snippet) {

@@ -48,7 +48,7 @@ public class TvSeriesActivity extends AppCompatActivity {
         final TextView play = findViewById(R.id.subscribe);
         avatar.setVisibility(View.GONE);
         name.setText(title);
-        play.setText(R.string.series_play);
+        play.setText(R.string.series_play_all);
         TvAdapters.focusZoom(play, 1.06f);
 
         final RecyclerView grid = findViewById(R.id.grid);
@@ -70,6 +70,54 @@ public class TvSeriesActivity extends AppCompatActivity {
         });
         play.requestFocus();
 
+        // Menu da playlist: Aleatório e Salvar nas minhas playlists
+        final TextView shuffle = findViewById(R.id.tv_extra1);
+        shuffle.setText(R.string.pl_shuffle);
+        shuffle.setVisibility(View.VISIBLE);
+        shuffle.setOnClickListener(v -> {
+            final java.util.List<StreamInfoItem> eps =
+                    new java.util.ArrayList<>(adapter.items());
+            if (!eps.isEmpty()) {
+                java.util.Collections.shuffle(eps);
+                PlayQueue.set(title, eps, null);
+                TvPlayerActivity.open(this, eps.get(0).getUrl());
+            }
+        });
+        final TextView save = findViewById(R.id.tv_extra2);
+        save.setText(R.string.pl_save_mine);
+        save.setVisibility(View.VISIBLE);
+        save.setOnClickListener(v -> {
+            final androidx.appcompat.app.AlertDialog dialog =
+                    new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                            .setTitle(R.string.pl_save_mine)
+                            .setMessage(R.string.pl_importing)
+                            .setCancelable(false)
+                            .show();
+            final String plName = pager.info() != null ? pager.info().getName() : title;
+            com.kamarguinho.supertube.util.Bg.run(() ->
+                            com.kamarguinho.supertube.data.YtImport.importPlaylist(this, url,
+                                    plName, text -> runOnUiThread(() -> dialog.setMessage(text))),
+                    new com.kamarguinho.supertube.util.Bg.Callback<
+                            com.kamarguinho.supertube.data.Playlists.Playlist>() {
+                        @Override
+                        public void onResult(
+                                final com.kamarguinho.supertube.data.Playlists.Playlist p) {
+                            dialog.dismiss();
+                            android.widget.Toast.makeText(TvSeriesActivity.this,
+                                    getString(R.string.pl_imported, p.name, p.videos.size()),
+                                    android.widget.Toast.LENGTH_LONG).show();
+                        }
+
+                        @Override
+                        public void onError(final Throwable error) {
+                            dialog.dismiss();
+                            android.widget.Toast.makeText(TvSeriesActivity.this,
+                                    Images.errorMessage(error),
+                                    android.widget.Toast.LENGTH_LONG).show();
+                        }
+                    });
+        });
+
         paged.start(pager, (episodes, error) -> {
             progress.setVisibility(View.GONE);
             final PlaylistInfo p = pager.info();
@@ -83,7 +131,7 @@ public class TvSeriesActivity extends AppCompatActivity {
                     if (sb.length() > 0) {
                         sb.append(" • ");
                     }
-                    sb.append(p.getStreamCount()).append(" episódios");
+                    sb.append(p.getStreamCount()).append(" vídeos");
                 }
                 info.setText(sb);
                 Glide.with(this).load(Images.best(p.getThumbnails())).into(banner);

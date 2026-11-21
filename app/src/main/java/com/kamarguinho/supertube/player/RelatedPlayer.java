@@ -10,11 +10,33 @@ import com.google.android.exoplayer2.Player;
 public class RelatedPlayer extends ForwardingPlayer {
 
     private final Runnable onNext;
+    private final Runnable onPrevious;
     private boolean hasNext = false;
 
     public RelatedPlayer(final Player player, final Runnable onNext) {
+        this(player, onNext, null);
+    }
+
+    /** @param onPrevious chamado no "anterior" (null = só volta ao início do vídeo) */
+    public RelatedPlayer(final Player player, final Runnable onNext, final Runnable onPrevious) {
         super(player);
         this.onNext = onNext;
+        this.onPrevious = onPrevious;
+    }
+
+    @Override
+    public void seekToPrevious() {
+        // Como no YouTube: depois de 3 s volta ao início; antes disso, vídeo anterior
+        if (onPrevious != null && getCurrentPosition() <= 3000) {
+            onPrevious.run();
+        } else {
+            seekTo(0);
+        }
+    }
+
+    @Override
+    public void seekToPreviousMediaItem() {
+        seekToPrevious();
     }
 
     public void setHasNext(final boolean value) {

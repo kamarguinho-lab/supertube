@@ -105,10 +105,6 @@ public class PlayerActivity extends AppCompatActivity {
             if (state == Player.STATE_ENDED && currentInfo != null) {
                 History.savePosition(PlayerActivity.this, currentInfo.getUrl(),
                         currentInfo.getDuration() * 1000);
-                // Série: começa o próximo episódio sozinho
-                if (com.kamarguinho.supertube.player.PlayQueue.contains(currentInfo.getUrl())) {
-                    playNextRelated();
-                }
             }
         }
 
@@ -181,7 +177,10 @@ public class PlayerActivity extends AppCompatActivity {
         playerBox = findViewById(R.id.player_box);
         // Controles como no YouTube: anterior, play/pausa e próximo (vídeo relacionado);
         // toque duplo nas laterais avança/volta 10 segundos
-        relatedPlayer = new RelatedPlayer(player, this::playNextRelated);
+        // Próximo/anterior passam pelo PlaybackNav (o mesmo do Bluetooth e da notificação)
+        relatedPlayer = new RelatedPlayer(player, () -> PlaybackNav.next(this),
+                () -> PlaybackNav.previous(this));
+        PlaybackNav.attach(this);
         playerView.setPlayer(relatedPlayer);
         playerView.setShowRewindButton(false);
         playerView.setShowFastForwardButton(false);
@@ -233,6 +232,16 @@ public class PlayerActivity extends AppCompatActivity {
             }
         }
 
+        // Link de playlist (sem vídeo escolhido): abre a página da playlist
+        if (url != null && !url.contains("v=") && !url.contains("youtu.be/")
+                && com.kamarguinho.supertube.data.YtImport.playlistUrl(url) != null) {
+            SeriesActivity.open(this, com.kamarguinho.supertube.data.YtImport.playlistUrl(url),
+                    getString(R.string.playlists));
+            if (currentInfo == null) {
+                finish();
+            }
+            return;
+        }
         if (url == null) {
             // Aberto pela notificação: mostra o que já está tocando
             if (currentInfo != null) {
@@ -250,7 +259,73 @@ public class PlayerActivity extends AppCompatActivity {
         load(url);
     }
 
+    private boolean skipBackPush = false;
+
+    /** Chamado pelo PlaybackNav (próximo/anterior vindos de qualquer lugar). */
+    void loadFromNav(final String url, final boolean remember) {
+        skipBackPush = !remember;
+        load(url);
+    }
+
+    static StreamInfo current() {
+        return currentInfo;
+    }
+
+    /**
+     * Toca um vídeo sem a tela aberta (ex.: "próximo" no fone Bluetooth com o celular
+     * bloqueado). Usa as mesmas escolhas salvas de qualidade, áudio e legenda.
+     */
+    static void playInBackground(final Context c, final String url, final boolean remember) {
+        final ExoPlayer p = PlayerService.getPlayer(c);
+        if (currentInfo != null) {
+            if (remember) {
+                PlaybackNav.pushBack(currentInfo.getUrl());
+            }
+            History.savePosition(c, currentInfo.getUrl(), p.getCurrentPosition());
+        }
+        final MediaResolver r = new MediaResolver(c);
+        r.audioLanguage = AudioTracks.preferred(c);
+        Bg.run(() -> {
+            final StreamInfo info = StreamInfo.getInfo(NewPipe.getServiceByUrl(url), url);
+            final Subtitles.Option sub = Subtitles.pick(info, Subtitles.mode(c));
+            final MediaSource src = r.resolve(info,
+                    Quality.maxHeight(c, Quality.mode(c), false), audioOnly, sub);
+            return new Object[]{info, src, sub};
+        }, new Bg.Callback<Object[]>() {
+            @Override
+            public void onResult(final Object[] res) {
+                final StreamInfo info = (StreamInfo) res[0];
+                currentInfo = info;
+                currentSubtitle = (Subtitles.Option) res[2];
+                PlayerService.nowUrl = url;
+                PlayerService.nowTitle = info.getName();
+                PlayerService.nowUploader = info.getUploaderName();
+                PlayerService.nowThumbnail = Images.best(info.getThumbnails());
+                Subtitles.select(p, currentSubtitle);
+                final long resume = History.resumePosition(c, url);
+                History.record(c, info);
+                if (resume > 0) {
+                    p.setMediaSource((MediaSource) res[1], resume);
+                } else {
+                    p.setMediaSource((MediaSource) res[1]);
+                }
+                p.prepare();
+                p.play();
+            }
+
+            @Override
+            public void onError(final Throwable error) {
+                android.widget.Toast.makeText(c, Images.errorMessage(error),
+                        android.widget.Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
     private void load(final String url) {
+        if (!skipBackPush && currentInfo != null && !url.equals(currentInfo.getUrl())) {
+            PlaybackNav.pushBack(currentInfo.getUrl());
+        }
+        skipBackPush = false;
         saveProgress();
         exactHeight = 0;
         resolver.audioTrackId = null;
@@ -801,6 +876,7 @@ public class PlayerActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         // O vídeo continua tocando em segundo plano pelo PlayerService
+        PlaybackNav.detach(this);
         player.removeListener(errorListener);
         playerView.setPlayer(null);
         super.onDestroy();

@@ -79,6 +79,55 @@ public class PlayerService extends Service {
         session.setActive(true);
         connector = new MediaSessionConnector(session);
         connector.setPlayer(p);
+        // Próximo/anterior no fone Bluetooth, no carro, no relógio e na tela de bloqueio
+        connector.setQueueNavigator(new MediaSessionConnector.QueueNavigator() {
+            @Override
+            public long getSupportedQueueNavigatorActions(@NonNull final Player player) {
+                return android.support.v4.media.session.PlaybackStateCompat.ACTION_SKIP_TO_NEXT
+                        | android.support.v4.media.session.PlaybackStateCompat
+                        .ACTION_SKIP_TO_PREVIOUS;
+            }
+
+            @Override
+            public void onTimelineChanged(@NonNull final Player player) {
+            }
+
+            @Override
+            public void onCurrentMediaItemIndexChanged(@NonNull final Player player) {
+            }
+
+            @Override
+            public long getActiveQueueItemId(@Nullable final Player player) {
+                return 0;
+            }
+
+            @Override
+            public void onSkipToPrevious(@NonNull final Player player) {
+                if (player.getCurrentPosition() > 3000) {
+                    player.seekTo(0);
+                } else {
+                    com.kamarguinho.supertube.ui.PlaybackNav.previous(PlayerService.this);
+                }
+            }
+
+            @Override
+            public void onSkipToQueueItem(@NonNull final Player player, final long id) {
+            }
+
+            @Override
+            public void onSkipToNext(@NonNull final Player player) {
+                com.kamarguinho.supertube.ui.PlaybackNav.next(PlayerService.this);
+            }
+
+            @Override
+            public boolean onCommand(@NonNull final Player player, @NonNull final String command,
+                                     @Nullable final android.os.Bundle extras,
+                                     @Nullable final android.os.ResultReceiver cb) {
+                return false;
+            }
+        });
+        // Série ou playlist: no fim do vídeo, toca o próximo (também com a tela fechada)
+        p.addListener(endListener);
 
         notificationManager = new PlayerNotificationManager.Builder(this, NOTIFICATION_ID,
                 App.CHANNEL_PLAYER)
@@ -101,14 +150,30 @@ public class PlayerService extends Service {
                 })
                 .build();
         notificationManager.setSmallIcon(R.drawable.ic_notification);
-        notificationManager.setUseNextAction(false);
-        notificationManager.setUsePreviousAction(false);
+        notificationManager.setUseNextAction(true);
+        notificationManager.setUsePreviousAction(true);
         notificationManager.setUseFastForwardAction(true);
         notificationManager.setUseRewindAction(true);
         notificationManager.setUseStopAction(true);
         notificationManager.setMediaSessionToken(session.getSessionToken());
-        notificationManager.setPlayer(p);
+        // Na notificação, "próximo" vai para o próximo vídeo (fila ou relacionado)
+        final RelatedPlayer navPlayer = new RelatedPlayer(p,
+                () -> com.kamarguinho.supertube.ui.PlaybackNav.next(this),
+                () -> com.kamarguinho.supertube.ui.PlaybackNav.previous(this));
+        navPlayer.setHasNext(true);
+        notificationManager.setPlayer(navPlayer);
     }
+
+    private final Player.Listener endListener = new Player.Listener() {
+        @Override
+        public void onPlaybackStateChanged(final int state) {
+            final String url = nowUrl;
+            if (state == Player.STATE_ENDED && url != null
+                    && com.kamarguinho.supertube.player.PlayQueue.contains(url)) {
+                com.kamarguinho.supertube.ui.PlaybackNav.next(PlayerService.this);
+            }
+        }
+    };
 
     @Override
     public int onStartCommand(final Intent intent, final int flags, final int startId) {
@@ -143,6 +208,9 @@ public class PlayerService extends Service {
     public void onDestroy() {
         notificationManager.setPlayer(null);
         connector.setPlayer(null);
+        if (player != null) {
+            player.removeListener(endListener);
+        }
         session.setActive(false);
         session.release();
         if (player != null) {

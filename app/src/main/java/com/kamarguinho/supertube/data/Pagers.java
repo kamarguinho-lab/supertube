@@ -422,6 +422,67 @@ public final class Pagers {
         };
     }
 
+    // ================= Abas do canal =================
+
+    /** Itens de qualquer aba de um canal (vídeos, shorts, ao vivo, playlists...). */
+    public static class TabPager {
+        private final int serviceId;
+        private final ListLinkHandler tab;
+        private Page page;
+        private boolean started = false;
+
+        public TabPager(final int serviceId, final ListLinkHandler tab) {
+            this.serviceId = serviceId;
+            this.tab = tab;
+        }
+
+        public synchronized List<InfoItem> next() throws Exception {
+            final StreamingService service = NewPipe.getService(serviceId);
+            if (!started) {
+                started = true;
+                final ChannelTabInfo info = ChannelTabInfo.getInfo(service, tab);
+                page = info.getNextPage();
+                return new ArrayList<>(info.getRelatedItems());
+            }
+            if (!Page.isValid(page)) {
+                return Collections.emptyList();
+            }
+            final ListExtractor.InfoItemsPage<InfoItem> more =
+                    ChannelTabInfo.getMoreItems(service, tab, page);
+            page = more.getNextPage();
+            return new ArrayList<>(more.getItems());
+        }
+
+        public synchronized boolean hasMore() {
+            return !started || Page.isValid(page);
+        }
+    }
+
+    /** Nome em português de uma aba do canal (null = aba que não mostramos). */
+    public static String tabName(final ListLinkHandler tab) {
+        final List<String> f = tab.getContentFilters();
+        final String id = f.isEmpty() ? "" : f.get(0);
+        switch (id) {
+            case ChannelTabs.VIDEOS:
+                return "Vídeos";
+            case ChannelTabs.SHORTS:
+                return "Shorts";
+            case ChannelTabs.LIVESTREAMS:
+                return "Ao vivo";
+            case ChannelTabs.PLAYLISTS:
+                return "Playlists";
+            case ChannelTabs.ALBUMS:
+                return "Álbuns";
+            default:
+                return null;
+        }
+    }
+
+    public static boolean isPlaylistsTab(final ListLinkHandler tab) {
+        return tab.getContentFilters().contains(ChannelTabs.PLAYLISTS)
+                || tab.getContentFilters().contains(ChannelTabs.ALBUMS);
+    }
+
     // ================= Lista fixa =================
 
     /** Uma lista já pronta (histórico, favoritos): entrega tudo de uma vez. */

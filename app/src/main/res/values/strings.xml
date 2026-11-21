@@ -132,4 +132,16 @@
     <string name="tv_login_steps">No celular, abra o SuperTube → aba Você → Conta SuperTube → Conectar uma TV, e digite este código:</string>
     <string name="tv_login_waiting">Esperando o celular…</string>
     <string name="tv_login_done">Conectado como %1$s</string>
+    <string name="pl_shuffle">🔀  Aleatório</string>
+    <string name="pl_save_mine">Salvar nas minhas playlists</string>
+    <string name="pl_import_all">Importar todas as playlists</string>
+    <string name="pl_importing">Importando…</string>
+    <string name="pl_imported">Pronto! \"%1$s\" com %2$d vídeos está nas suas playlists.</string>
+    <string name="pl_imported_many">Pronto! %1$d playlists importadas.</string>
+    <string name="pl_import_link">Importar playlist do YouTube (link)</string>
+    <string name="pl_link_hint">Cole o link da playlist do YouTube</string>
+    <string name="pl_link_invalid">Esse link não é de uma playlist do YouTube.</string>
+    <string name="pl_no_playlists">Este canal não tem playlists públicas.</string>
+    <string name="series_play_all">▶  Tocar tudo</string>
+    <string name="import_playlists_extra">\nPlaylists importadas: %1$d.</string>
 </resources>

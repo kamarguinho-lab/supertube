@@ -157,6 +157,33 @@ public final class Playlists {
         return inside;
     }
 
+    /**
+     * Importa uma lista de vídeos: se já existe uma playlist com esse nome, junta (sem
+     * repetir); senão cria. Retorna a playlist.
+     */
+    public synchronized Playlist importVideos(final String name,
+                                              final List<Favorites.Video> videos) {
+        final List<Playlist> list = all();
+        Playlist target = null;
+        for (final Playlist p : list) {
+            if (p.name.equalsIgnoreCase(name.trim())) {
+                target = p;
+                break;
+            }
+        }
+        if (target == null) {
+            target = new Playlist(UUID.randomUUID().toString(), name.trim());
+            list.add(0, target);
+        }
+        for (final Favorites.Video v : videos) {
+            if (!target.contains(v.url)) {
+                target.videos.add(v);
+            }
+        }
+        save(list);
+        return target;
+    }
+
     public synchronized void remove(final String id, final String url) {
         final List<Playlist> list = all();
         final String k = Favorites.key(url);

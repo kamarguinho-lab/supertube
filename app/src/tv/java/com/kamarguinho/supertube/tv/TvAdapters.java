@@ -505,7 +505,7 @@ final class TvAdapters {
             h.title.setText(item.getName());
             h.subtitle.setText(item.getUploaderName() != null ? item.getUploaderName() : "");
             final long n = item.getStreamCount();
-            h.badge.setText(n > 0 ? n + " episódios" : "Série");
+            h.badge.setText(n > 0 ? "▶ " + n + " vídeos" : "Playlist");
             h.badge.setVisibility(View.VISIBLE);
             final int radius = (int) (10 * ctx.getResources().getDisplayMetrics().density);
             Glide.with(ctx).load(Images.best(item.getThumbnails()))
