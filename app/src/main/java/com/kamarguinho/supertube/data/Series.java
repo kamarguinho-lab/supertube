@@ -76,6 +76,40 @@ public final class Series {
             {"Para relaxar", "playlist música para relaxar", "lofi playlist"},
     };
 
+    /** Estilos para o app em inglês: músicas de várias culturas do mundo. */
+    public static final String[][] MUSIC_GENRES_EN = {
+            {"Top hits", "top 50 global playlist", "most streamed songs playlist"},
+            {"Pop", "pop hits playlist", "best pop songs playlist"},
+            {"Hip-hop & rap", "hip hop hits playlist", "rap playlist"},
+            {"R&B & soul", "r&b hits playlist", "soul classics playlist"},
+            {"Rock", "rock classics playlist", "best rock songs playlist"},
+            {"Country", "country hits playlist", "best country songs playlist"},
+            {"Latin & reggaeton", "reggaeton hits playlist", "latin pop playlist"},
+            {"K-pop", "k-pop hits playlist", "best kpop songs playlist"},
+            {"Afrobeats", "afrobeats hits playlist", "amapiano playlist"},
+            {"Electronic & dance", "edm hits playlist", "dance music playlist"},
+            {"Bollywood", "bollywood hits playlist", "best hindi songs playlist"},
+            {"J-pop & anime", "j-pop hits playlist", "anime songs playlist"},
+            {"Arabic", "arabic hits playlist", "best arabic songs playlist"},
+            {"Irish & Celtic", "irish music playlist", "celtic music playlist"},
+            {"Jazz", "jazz classics playlist", "smooth jazz playlist"},
+            {"Blues", "blues classics playlist"},
+            {"Classical", "classical music playlist", "best of mozart beethoven playlist"},
+            {"Reggae", "reggae classics playlist", "bob marley playlist"},
+            {"Metal", "metal classics playlist", "heavy metal playlist"},
+            {"Indie & alternative", "indie hits playlist", "alternative rock playlist"},
+            {"80s & 90s", "80s hits playlist", "90s hits playlist"},
+            {"Love songs", "love songs playlist", "romantic songs playlist"},
+            {"Gospel & worship", "worship songs playlist", "gospel music playlist"},
+            {"Kids", "kids songs playlist"},
+            {"Chill & lofi", "lofi playlist", "chill music playlist"},
+    };
+
+    /** Estilos de música do idioma atual (português: Brasil; inglês: mundo). */
+    public static String[][] musicGenres() {
+        return com.kamarguinho.supertube.util.Lang.english() ? MUSIC_GENRES_EN : MUSIC_GENRES;
+    }
+
     /** Estilos que continuam com busca em português mesmo com o app em inglês. */
     private static final java.util.Set<String> BRAZILIAN = new java.util.HashSet<>(
             java.util.Arrays.asList("Sertanejo", "Funk", "Pagode e samba", "Forró e piseiro",
@@ -102,13 +136,13 @@ public final class Series {
     public static Pager pagerFor(final String query) {
         final boolean music = query.startsWith(MUSIC);
         final String prefix = music ? MUSIC : QUERY;
-        final String[][] genres = music ? MUSIC_GENRES : GENRES;
+        final String[][] genres = music ? musicGenres() : GENRES;
         final boolean english = com.kamarguinho.supertube.util.Lang.english();
         if (query.startsWith(prefix + ":")) {
             final String name = query.substring(prefix.length() + 1);
             for (final String[] g : genres) {
                 // Em inglês: buscas em inglês (menos nos estilos brasileiros)
-                if (english && g[0].equals(name) && !BRAZILIAN.contains(name)) {
+                if (english && !music && g[0].equals(name) && !BRAZILIAN.contains(name)) {
                     final String en = com.kamarguinho.supertube.util.Lang.t(name).toLowerCase();
                     return new SearchPager(music
                             ? new String[]{en + " playlist", "best " + en + " songs playlist"}

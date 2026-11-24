@@ -869,7 +869,7 @@ public class MainActivity extends AppCompatActivity {
     private void fillMusicGenres() {
         genreGroup.setOnCheckedStateChangeListener(null);
         genreGroup.removeAllViews();
-        for (int i = 0; i <= Series.MUSIC_GENRES.length; i++) {
+        for (int i = 0; i <= Series.musicGenres().length; i++) {
             final Chip chip = (Chip) LayoutInflater.from(this)
                     .inflate(R.layout.chip_category, genreGroup, false);
             chip.setId(View.generateViewId());
@@ -877,8 +877,8 @@ public class MainActivity extends AppCompatActivity {
                 chip.setText(R.string.music_all);
                 chip.setTag(Series.MUSIC);
             } else {
-                chip.setText(com.kamarguinho.supertube.util.Lang.t(Series.MUSIC_GENRES[i - 1][0]));
-                chip.setTag(Series.musicQuery(Series.MUSIC_GENRES[i - 1][0]));
+                chip.setText(com.kamarguinho.supertube.util.Lang.t(Series.musicGenres()[i - 1][0]));
+                chip.setTag(Series.musicQuery(Series.musicGenres()[i - 1][0]));
             }
             genreGroup.addView(chip);
             if (i == 0) {

@@ -432,7 +432,7 @@ public class TvMainActivity extends AppCompatActivity {
             homeList.setAdapter(musicRows);
             if (musicRows.size() == 0) {
                 final List<TvAdapters.SeriesRow> rows = new ArrayList<>();
-                for (final String[] g : com.kamarguinho.supertube.data.Series.MUSIC_GENRES) {
+                for (final String[] g : com.kamarguinho.supertube.data.Series.musicGenres()) {
                     rows.add(new TvAdapters.SeriesRow(com.kamarguinho.supertube.util.Lang.t(g[0]),
                             com.kamarguinho.supertube.data.Series.pagerFor(
                                     com.kamarguinho.supertube.data.Series.musicQuery(g[0]))));
