@@ -76,6 +76,11 @@ public final class Series {
             {"Para relaxar", "playlist música para relaxar", "lofi playlist"},
     };
 
+    /** Estilos que continuam com busca em português mesmo com o app em inglês. */
+    private static final java.util.Set<String> BRAZILIAN = new java.util.HashSet<>(
+            java.util.Arrays.asList("Sertanejo", "Funk", "Pagode e samba", "Forró e piseiro",
+                    "MPB", "Novelas", "Séries nacionais", "Séries dubladas"));
+
     private Series() {
     }
 
@@ -98,9 +103,17 @@ public final class Series {
         final boolean music = query.startsWith(MUSIC);
         final String prefix = music ? MUSIC : QUERY;
         final String[][] genres = music ? MUSIC_GENRES : GENRES;
+        final boolean english = com.kamarguinho.supertube.util.Lang.english();
         if (query.startsWith(prefix + ":")) {
             final String name = query.substring(prefix.length() + 1);
             for (final String[] g : genres) {
+                // Em inglês: buscas em inglês (menos nos estilos brasileiros)
+                if (english && g[0].equals(name) && !BRAZILIAN.contains(name)) {
+                    final String en = com.kamarguinho.supertube.util.Lang.t(name).toLowerCase();
+                    return new SearchPager(music
+                            ? new String[]{en + " playlist", "best " + en + " songs playlist"}
+                            : new String[]{en + " full episodes", en + " series full season"});
+                }
                 if (g[0].equals(name)) {
                     final String[] q = new String[g.length - 1];
                     System.arraycopy(g, 1, q, 0, q.length);

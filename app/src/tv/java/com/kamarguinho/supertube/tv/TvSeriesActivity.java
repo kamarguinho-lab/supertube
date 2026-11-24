@@ -131,7 +131,7 @@ public class TvSeriesActivity extends AppCompatActivity {
                     if (sb.length() > 0) {
                         sb.append(" • ");
                     }
-                    sb.append(p.getStreamCount()).append(" vídeos");
+                    sb.append(getString(R.string.playlist_videos, (int) p.getStreamCount()));
                 }
                 info.setText(sb);
                 Glide.with(this).load(Images.best(p.getThumbnails())).into(banner);

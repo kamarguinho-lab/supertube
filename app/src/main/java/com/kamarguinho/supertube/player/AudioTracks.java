@@ -47,7 +47,7 @@ public final class AudioTracks {
 
     private static final String PREFS = "audio";
     private static final String KEY_LANG = "language";
-    private static final Locale PT_BR = Locale.forLanguageTag("pt-BR");
+    
 
     private AudioTracks() {
     }
@@ -94,19 +94,19 @@ public final class AudioTracks {
 
     private static String label(final AudioStream a) {
         final Locale l = a.getAudioLocale();
-        String name = l != null ? l.getDisplayLanguage(PT_BR) : null;
+        String name = l != null ? l.getDisplayLanguage(com.kamarguinho.supertube.util.Lang.locale()) : null;
         if (name == null || name.isEmpty()) {
-            name = a.getAudioTrackName() != null ? a.getAudioTrackName() : "Áudio";
+            name = a.getAudioTrackName() != null ? a.getAudioTrackName() : com.kamarguinho.supertube.util.Lang.t("Áudio");
         } else {
-            name = name.substring(0, 1).toUpperCase(PT_BR) + name.substring(1);
+            name = name.substring(0, 1).toUpperCase(com.kamarguinho.supertube.util.Lang.locale()) + name.substring(1);
         }
         final AudioTrackType t = a.getAudioTrackType();
         if (t == null || t == AudioTrackType.ORIGINAL) {
-            return name + " (original)";
+            return name + " (" + com.kamarguinho.supertube.util.Lang.t("original") + ")";
         } else if (t == AudioTrackType.DUBBED) {
-            return name + " (dublado)";
+            return name + " (" + com.kamarguinho.supertube.util.Lang.t("dublado") + ")";
         } else if (t == AudioTrackType.DESCRIPTIVE) {
-            return name + " (descrição de áudio)";
+            return name + " (" + com.kamarguinho.supertube.util.Lang.t("descrição de áudio") + ")";
         }
         return name;
     }
@@ -114,7 +114,7 @@ public final class AudioTracks {
     /** Nome curto para o botão ("Português", "Original"...). */
     public static String shortLabel(@Nullable final Track t) {
         if (t == null || t.original) {
-            return "Original";
+            return com.kamarguinho.supertube.util.Lang.t("Original");
         }
         final int p = t.label.indexOf(" (");
         return p > 0 ? t.label.substring(0, p) : t.label;

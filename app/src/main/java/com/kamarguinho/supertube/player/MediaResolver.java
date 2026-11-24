@@ -112,7 +112,7 @@ public final class MediaResolver {
                 return new DashMediaSource.Factory(generic)
                         .createMediaSource(MediaItem.fromUri(info.getDashMpdUrl()));
             }
-            throw new Exception("Transmissão ao vivo sem link compatível");
+            throw new Exception(com.kamarguinho.supertube.util.Lang.t("Transmissão ao vivo sem link compatível"));
         }
 
         lastHeight = 0;
@@ -144,7 +144,7 @@ public final class MediaResolver {
             return new HlsMediaSource.Factory(youtube ? ytHls : generic)
                     .createMediaSource(MediaItem.fromUri(info.getHlsUrl()));
         }
-        throw new Exception("Nenhum formato de vídeo compatível foi encontrado");
+        throw new Exception(com.kamarguinho.supertube.util.Lang.t("Nenhum formato de vídeo compatível foi encontrado"));
     }
 
     private MediaSource source(final Stream stream, final StreamInfo info,

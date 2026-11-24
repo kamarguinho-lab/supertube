@@ -59,7 +59,7 @@ public final class Pagers {
         if (query.startsWith(Movies.QUERY)) {
             return Movies.pagerFor(query);
         }
-        return new SearchPager(query);
+        return new SearchPager(com.kamarguinho.supertube.util.Lang.query(query));
     }
 
     static List<StreamInfoItem> streams(final List<? extends InfoItem> items,
@@ -464,15 +464,15 @@ public final class Pagers {
         final String id = f.isEmpty() ? "" : f.get(0);
         switch (id) {
             case ChannelTabs.VIDEOS:
-                return "Vídeos";
+                return com.kamarguinho.supertube.util.Lang.t("Vídeos");
             case ChannelTabs.SHORTS:
-                return "Shorts";
+                return com.kamarguinho.supertube.util.Lang.t("Shorts");
             case ChannelTabs.LIVESTREAMS:
-                return "Ao vivo";
+                return com.kamarguinho.supertube.util.Lang.t("Ao vivo");
             case ChannelTabs.PLAYLISTS:
-                return "Playlists";
+                return com.kamarguinho.supertube.util.Lang.t("Playlists");
             case ChannelTabs.ALBUMS:
-                return "Álbuns";
+                return com.kamarguinho.supertube.util.Lang.t("Álbuns");
             default:
                 return null;
         }

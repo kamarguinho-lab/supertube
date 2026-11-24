@@ -204,8 +204,8 @@ public class TvPlayerActivity extends AppCompatActivity {
                 titleView.setText(current.getName());
                 final StringBuilder sub = new StringBuilder(current.getUploaderName());
                 if (current.getViewCount() >= 0) {
-                    sub.append(" • ").append(TvAdapters.formatCount(current.getViewCount()))
-                            .append(" de visualizações");
+                    sub.append(" • ").append(getString(R.string.views,
+                            TvAdapters.formatCount(current.getViewCount())));
                 }
                 if (current.getTextualUploadDate() != null) {
                     sub.append(" • ").append(current.getTextualUploadDate());

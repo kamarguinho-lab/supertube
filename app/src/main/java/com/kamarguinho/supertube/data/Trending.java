@@ -65,7 +65,8 @@ public final class Trending {
         if (out.isEmpty()) {
             // Se o YouTube mudar as listas de tendências, cai para uma busca
             for (final InfoItem i : SearchInfo.getInfo(yt,
-                    yt.getSearchQHFactory().fromQuery("em alta hoje")).getRelatedItems()) {
+                    yt.getSearchQHFactory().fromQuery(
+                    com.kamarguinho.supertube.util.Lang.query("em alta hoje"))).getRelatedItems()) {
                 if (i instanceof StreamInfoItem && !Movies.isShort((StreamInfoItem) i)) {
                     out.put(i.getUrl(), (StreamInfoItem) i);
                 }

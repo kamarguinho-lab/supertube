@@ -303,6 +303,10 @@
             android:layout_weight="1" />
 
         <include
+            android:id="@+id/rail_language"
+            layout="@layout/tv_rail_item" />
+
+        <include
             android:id="@+id/rail_update"
             layout="@layout/tv_rail_item" />
 

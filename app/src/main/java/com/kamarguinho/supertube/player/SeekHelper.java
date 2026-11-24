@@ -63,7 +63,9 @@ public final class SeekHelper {
         final TextView show = direction < 0 ? left : right;
         final TextView other = direction < 0 ? right : left;
         other.setVisibility(View.GONE);
-        show.setText(direction < 0 ? "◀◀  " + secs + " segundos" : secs + " segundos  ▶▶");
+        final String label = show.getContext().getString(
+                com.kamarguinho.supertube.R.string.seek_seconds, (int) secs);
+        show.setText(direction < 0 ? "◀◀  " + label : label + "  ▶▶");
         show.animate().cancel();
         show.setAlpha(1f);
         show.setVisibility(View.VISIBLE);

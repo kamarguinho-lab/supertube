@@ -74,16 +74,33 @@ public final class Movies {
     }
 
     /** Paginador para "todos os filmes" ou para um gênero. */
+    /** Buscas em inglês (quando o app está em inglês). */
+    private static String[] englishQueries(final String genrePt) {
+        final String en = com.kamarguinho.supertube.util.Lang.t(genrePt).toLowerCase();
+        return new String[]{"full " + en + " movie english", en + " full length movie",
+                "free " + en + " movie full"};
+    }
+
     public static Pagers.Pager pagerFor(final String query) {
+        final boolean english = com.kamarguinho.supertube.util.Lang.english();
         if (query.startsWith(QUERY + ":")) {
             final String name = query.substring(QUERY.length() + 1);
             for (final String[] g : GENRES) {
+                if (english && g[0].equals(name) && !"Nacional".equals(name)) {
+                    return new MoviePager(englishQueries(name));
+                }
                 if (g[0].equals(name)) {
                     final String[] queries = new String[g.length - 1];
                     System.arraycopy(g, 1, queries, 0, queries.length);
                     return new MoviePager(queries);
                 }
             }
+        }
+        if (english) {
+            return new MoviePager(new String[]{"full movie english", "full length movie free",
+                    "full action movie english", "full comedy movie english",
+                    "full thriller movie english", "full drama movie english",
+                    "full family movie english", "full horror movie english"});
         }
         return new MoviePager(QUERIES);
     }

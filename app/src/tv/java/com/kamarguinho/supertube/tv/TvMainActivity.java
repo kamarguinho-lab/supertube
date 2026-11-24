@@ -243,6 +243,14 @@ public class TvMainActivity extends AppCompatActivity {
         }
         updateRailIcons();
 
+        // Idioma (Português / English)
+        final View language = findViewById(R.id.rail_language);
+        ((ImageView) language.findViewById(R.id.rail_icon)).setImageResource(R.drawable.ic_dub);
+        ((TextView) language.findViewById(R.id.rail_label)).setText(getString(
+                R.string.language_current,
+                com.kamarguinho.supertube.util.LangUi.currentLabel(this)));
+        language.setOnClickListener(v -> com.kamarguinho.supertube.util.LangUi.show(this));
+
         // Botão Atualizar, no fim do menu
         final View update = findViewById(R.id.rail_update);
         ((ImageView) update.findViewById(R.id.rail_icon)).setImageResource(R.drawable.ic_update);
@@ -288,6 +296,8 @@ public class TvMainActivity extends AppCompatActivity {
             item.findViewById(R.id.rail_label).setVisibility(expanded ? View.VISIBLE : View.GONE);
         }
         findViewById(R.id.rail_update).findViewById(R.id.rail_label)
+                .setVisibility(expanded ? View.VISIBLE : View.GONE);
+        findViewById(R.id.rail_language).findViewById(R.id.rail_label)
                 .setVisibility(expanded ? View.VISIBLE : View.GONE);
     }
 
@@ -392,7 +402,7 @@ public class TvMainActivity extends AppCompatActivity {
         for (int i = 0; i < CATEGORIES.length; i++) {
             final TextView chip = (TextView) LayoutInflater.from(this)
                     .inflate(R.layout.tv_pill, chipsBox, false);
-            chip.setText(CATEGORIES[i][0]);
+            chip.setText(com.kamarguinho.supertube.util.Lang.t(CATEGORIES[i][0]));
             final int index = i;
             chip.setOnClickListener(v -> selectChip(index));
             chipsBox.addView(chip);
@@ -423,7 +433,7 @@ public class TvMainActivity extends AppCompatActivity {
             if (musicRows.size() == 0) {
                 final List<TvAdapters.SeriesRow> rows = new ArrayList<>();
                 for (final String[] g : com.kamarguinho.supertube.data.Series.MUSIC_GENRES) {
-                    rows.add(new TvAdapters.SeriesRow(g[0],
+                    rows.add(new TvAdapters.SeriesRow(com.kamarguinho.supertube.util.Lang.t(g[0]),
                             com.kamarguinho.supertube.data.Series.pagerFor(
                                     com.kamarguinho.supertube.data.Series.musicQuery(g[0]))));
                 }
@@ -443,7 +453,7 @@ public class TvMainActivity extends AppCompatActivity {
                         com.kamarguinho.supertube.data.Series.pagerFor(
                                 com.kamarguinho.supertube.data.Series.QUERY)));
                 for (final String[] g : com.kamarguinho.supertube.data.Series.GENRES) {
-                    rows.add(new TvAdapters.SeriesRow(g[0],
+                    rows.add(new TvAdapters.SeriesRow(com.kamarguinho.supertube.util.Lang.t(g[0]),
                             com.kamarguinho.supertube.data.Series.pagerFor(
                                     com.kamarguinho.supertube.data.Series.genreQuery(g[0]))));
                 }
@@ -462,7 +472,7 @@ public class TvMainActivity extends AppCompatActivity {
                 rows.add(new TvAdapters.Row(getString(R.string.movies_all),
                         Pagers.forQuery(Movies.QUERY)));
                 for (final String[] g : Movies.GENRES) {
-                    rows.add(new TvAdapters.Row(g[0],
+                    rows.add(new TvAdapters.Row(com.kamarguinho.supertube.util.Lang.t(g[0]),
                             Pagers.forQuery(Movies.genreQuery(g[0]))));
                 }
                 moviesRows.set(rows);
@@ -506,7 +516,7 @@ public class TvMainActivity extends AppCompatActivity {
         }
 
         for (final String[] r : HOME_ROWS) {
-            rows.add(new TvAdapters.Row(r[0], Pagers.forQuery(r[1])));
+            rows.add(new TvAdapters.Row(com.kamarguinho.supertube.util.Lang.t(r[0]), Pagers.forQuery(r[1])));
         }
         rowsAdapter.set(rows);
         for (final TvAdapters.Row row : rows) {

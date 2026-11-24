@@ -165,21 +165,7 @@ final class TvAdapters {
     }
 
     static String formatCount(final long n) {
-        if (n >= 1_000_000_000L) {
-            return compact(n / 1e9) + " bi";
-        } else if (n >= 1_000_000L) {
-            return compact(n / 1e6) + " mi";
-        } else if (n >= 1_000L) {
-            return compact(n / 1e3) + " mil";
-        }
-        return String.valueOf(n);
-    }
-
-    private static String compact(final double v) {
-        if (v >= 100 || Math.abs(v - Math.round(v)) < 0.05) {
-            return String.valueOf(Math.round(v));
-        }
-        return String.format(Locale.forLanguageTag("pt-BR"), "%.1f", v);
+        return com.kamarguinho.supertube.util.Lang.count(n);
     }
 
     // ---------------- Cards de vídeo ----------------
@@ -280,7 +266,7 @@ final class TvAdapters {
                     sub.append(item.getUploaderName()).append('\n');
                 }
                 if (item.getViewCount() > 0) {
-                    sub.append(formatCount(item.getViewCount())).append(" de visualizações");
+                    sub.append(ctx.getString(R.string.views, formatCount(item.getViewCount())));
                 }
                 if (item.getTextualUploadDate() != null) {
                     if (item.getViewCount() > 0) {
@@ -291,7 +277,8 @@ final class TvAdapters {
                 subtitle.setText(sub.toString().trim());
 
                 final boolean live = item.getStreamType() == StreamType.LIVE_STREAM;
-                final String d = live ? "AO VIVO" : Images.duration(item.getDuration());
+                final String d = live ? ctx.getString(R.string.live)
+                        : Images.duration(item.getDuration());
                 duration.setText(d);
                 duration.setVisibility(d.isEmpty() ? View.GONE : View.VISIBLE);
                 duration.setBackgroundResource(live ? R.drawable.live_bg : R.drawable.duration_bg);
@@ -505,7 +492,8 @@ final class TvAdapters {
             h.title.setText(item.getName());
             h.subtitle.setText(item.getUploaderName() != null ? item.getUploaderName() : "");
             final long n = item.getStreamCount();
-            h.badge.setText(n > 0 ? "▶ " + n + " vídeos" : "Playlist");
+            h.badge.setText(n > 0 ? "▶ " + ctx.getString(R.string.playlist_videos, (int) n)
+                    : "Playlist");
             h.badge.setVisibility(View.VISIBLE);
             final int radius = (int) (10 * ctx.getResources().getDisplayMetrics().density);
             Glide.with(ctx).load(Images.best(item.getThumbnails()))

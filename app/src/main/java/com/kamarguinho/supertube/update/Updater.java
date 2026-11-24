@@ -78,8 +78,8 @@ public final class Updater {
         try (Response response = DownloaderImpl.getInstance().getClient()
                 .newCall(request).execute()) {
             if (response.code() == 404) {
-                throw new IOException("Página de versões não encontrada. "
-                        + "O repositório do GitHub precisa ser público.");
+                throw new IOException(com.kamarguinho.supertube.util.Lang.t("Página de versões não encontrada. "
+                        + "O repositório do GitHub precisa ser público."));
             }
             if (!response.isSuccessful() || response.body() == null) {
                 throw new IOException("GitHub respondeu HTTP " + response.code());

@@ -170,7 +170,7 @@ public class ItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                 if (sub.length() > 0) {
                     sub.append(" • ");
                 }
-                sub.append(formatCount(item.getViewCount())).append(" de visualizações");
+                sub.append(ctx.getString(R.string.views, formatCount(item.getViewCount())));
             }
             if (item.getTextualUploadDate() != null) {
                 if (sub.length() > 0) {
@@ -192,7 +192,8 @@ public class ItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
             final boolean live = item.getStreamType() == StreamType.LIVE_STREAM
                     || item.getStreamType() == StreamType.AUDIO_LIVE_STREAM;
-            final String d = live ? "AO VIVO" : Images.duration(item.getDuration());
+            final String d = live ? ctx.getString(R.string.live)
+                    : Images.duration(item.getDuration());
             duration.setText(d);
             duration.setVisibility(d.isEmpty() ? View.GONE : View.VISIBLE);
 
@@ -253,7 +254,8 @@ public class ItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             title.setText(item.getName());
             subtitle.setText(item.getUploaderName() != null ? item.getUploaderName() : "");
             final long n = item.getStreamCount();
-            badge.setText(n > 0 ? "▶ " + n + " vídeos" : "Playlist");
+            badge.setText(n > 0 ? "▶ " + ctx.getString(R.string.playlist_videos, (int) n)
+                    : "Playlist");
             badge.setVisibility(View.VISIBLE);
             Glide.with(ctx).load(Images.best(item.getThumbnails()))
                     .placeholder(R.color.thumb_placeholder).into(thumb);
@@ -278,7 +280,8 @@ public class ItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             final Context ctx = itemView.getContext();
             name.setText(item.getName());
             info.setText(item.getSubscriberCount() > 0
-                    ? formatCount(item.getSubscriberCount()) + " de inscritos" : "Canal");
+                    ? ctx.getString(R.string.subs_count, formatCount(item.getSubscriberCount()))
+                    : ctx.getString(R.string.channel));
             Glide.with(ctx).load(Images.best(item.getThumbnails()))
                     .apply(RequestOptions.circleCropTransform())
                     .placeholder(R.color.thumb_placeholder).into(avatar);
@@ -287,22 +290,8 @@ public class ItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         }
     }
 
-    /** Números no estilo "1,2 mi", "350 mil". */
+    /** Números no estilo "1,2 mi" (ou "1.2M" em inglês). */
     static String formatCount(final long n) {
-        if (n >= 1_000_000_000L) {
-            return compact(n / 1e9) + " bi";
-        } else if (n >= 1_000_000L) {
-            return compact(n / 1e6) + " mi";
-        } else if (n >= 1_000L) {
-            return compact(n / 1e3) + " mil";
-        }
-        return String.valueOf(n);
-    }
-
-    private static String compact(final double v) {
-        if (v >= 100 || Math.abs(v - Math.round(v)) < 0.05) {
-            return String.valueOf(Math.round(v));
-        }
-        return String.format(java.util.Locale.forLanguageTag("pt-BR"), "%.1f", v);
+        return com.kamarguinho.supertube.util.Lang.count(n);
     }
 }

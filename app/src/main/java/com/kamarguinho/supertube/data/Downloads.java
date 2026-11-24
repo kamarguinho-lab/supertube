@@ -38,14 +38,14 @@ public final class Downloads {
         final List<Option> out = new ArrayList<>();
         for (final VideoStream v : info.getVideoStreams()) {
             if (direct(v)) {
-                out.add(new Option("Vídeo " + v.getResolution() + " ("
+                out.add(new Option(com.kamarguinho.supertube.util.Lang.t("Vídeo") + " " + v.getResolution() + " ("
                         + v.getFormat().getSuffix().toUpperCase() + ")", v));
             }
         }
         for (final AudioStream a : info.getAudioStreams()) {
             if (direct(a)) {
                 final int kbps = a.getAverageBitrate();
-                String label = "Áudio " + (kbps > 0 ? kbps + " kbps " : "")
+                String label = com.kamarguinho.supertube.util.Lang.t("Áudio") + " " + (kbps > 0 ? kbps + " kbps " : "")
                         + "(" + a.getFormat().getSuffix().toUpperCase() + ")";
                 if (a.getAudioTrackName() != null) {
                     label += " – " + a.getAudioTrackName();

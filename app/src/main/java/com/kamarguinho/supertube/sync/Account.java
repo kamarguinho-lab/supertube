@@ -112,7 +112,7 @@ public final class Account {
         }
         final String refresh = prefs(c).getString("refresh", null);
         if (refresh == null) {
-            throw new IOException("Não conectado");
+            throw new IOException(com.kamarguinho.supertube.util.Lang.t("Não conectado"));
         }
         final JSONObject r = refresh(refresh);
         prefs(c).edit().putString("refresh", r.getString("refresh_token"))
@@ -168,7 +168,7 @@ public final class Account {
                 }
             }
         }
-        throw new IOException("Não foi possível criar o código. Tente de novo.");
+        throw new IOException(com.kamarguinho.supertube.util.Lang.t("Não foi possível criar o código. Tente de novo."));
     }
 
     /** TV: o celular já aprovou? Se sim, a TV fica conectada na mesma conta. */
@@ -220,7 +220,8 @@ public final class Account {
         try (Response response = DownloaderImpl.getInstance().getClient()
                 .newCall(request).execute()) {
             if (!response.isSuccessful()) {
-                throw new IOException("Código não encontrado. Confira o número que aparece na TV.");
+                throw new IOException(com.kamarguinho.supertube.util.Lang.t(
+                        "Código não encontrado. Confira o número que aparece na TV."));
             }
         }
     }
@@ -252,18 +253,18 @@ public final class Account {
     /** Erros do Firebase em português. */
     private static String friendly(final String code) {
         if (code.startsWith("EMAIL_EXISTS")) {
-            return "Este e-mail já tem conta. Use \"Entrar\".";
+            return com.kamarguinho.supertube.util.Lang.t("Este e-mail já tem conta. Use \"Entrar\".");
         } else if (code.startsWith("EMAIL_NOT_FOUND") || code.startsWith("INVALID_LOGIN")
                 || code.startsWith("INVALID_PASSWORD")) {
-            return "E-mail ou senha incorretos.";
+            return com.kamarguinho.supertube.util.Lang.t("E-mail ou senha incorretos.");
         } else if (code.startsWith("WEAK_PASSWORD")) {
-            return "A senha precisa ter pelo menos 6 caracteres.";
+            return com.kamarguinho.supertube.util.Lang.t("A senha precisa ter pelo menos 6 caracteres.");
         } else if (code.startsWith("INVALID_EMAIL")) {
-            return "E-mail inválido.";
+            return com.kamarguinho.supertube.util.Lang.t("E-mail inválido.");
         } else if (code.startsWith("TOO_MANY_ATTEMPTS")) {
-            return "Muitas tentativas. Espere um pouco e tente de novo.";
+            return com.kamarguinho.supertube.util.Lang.t("Muitas tentativas. Espere um pouco e tente de novo.");
         } else if (code.startsWith("OPERATION_NOT_ALLOWED") || code.startsWith("ADMIN_ONLY")) {
-            return "Login não ativado no Firebase (ative E-mail/senha e Anônimo).";
+            return com.kamarguinho.supertube.util.Lang.t("Login não ativado no Firebase (ative E-mail/senha e Anônimo).");
         }
         return code;
     }

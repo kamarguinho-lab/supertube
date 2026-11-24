@@ -197,6 +197,11 @@ public class MainActivity extends AppCompatActivity {
                         })
                         .setNegativeButton(android.R.string.cancel, null)
                         .show());
+        final com.google.android.material.button.MaterialButton languageButton =
+                findViewById(R.id.language);
+        languageButton.setText(getString(R.string.language_current,
+                com.kamarguinho.supertube.util.LangUi.currentLabel(this)));
+        languageButton.setOnClickListener(v -> com.kamarguinho.supertube.util.LangUi.show(this));
         findViewById(R.id.update_app).setOnClickListener(v ->
                 com.kamarguinho.supertube.update.Updater.checkAndPrompt(this, false));
         ((TextView) findViewById(R.id.version_text)).setText(getString(R.string.version_label,
@@ -305,7 +310,7 @@ public class MainActivity extends AppCompatActivity {
             final Chip chip = (Chip) LayoutInflater.from(this)
                     .inflate(R.layout.chip_category, chips, false);
             chip.setId(View.generateViewId());
-            chip.setText(CATEGORIES[i][0]);
+            chip.setText(com.kamarguinho.supertube.util.Lang.t(CATEGORIES[i][0]));
             chip.setTag(CATEGORIES[i][1]);
             chips.addView(chip);
             if (i == 0) {
@@ -872,7 +877,7 @@ public class MainActivity extends AppCompatActivity {
                 chip.setText(R.string.music_all);
                 chip.setTag(Series.MUSIC);
             } else {
-                chip.setText(Series.MUSIC_GENRES[i - 1][0]);
+                chip.setText(com.kamarguinho.supertube.util.Lang.t(Series.MUSIC_GENRES[i - 1][0]));
                 chip.setTag(Series.musicQuery(Series.MUSIC_GENRES[i - 1][0]));
             }
             genreGroup.addView(chip);
@@ -907,7 +912,7 @@ public class MainActivity extends AppCompatActivity {
                 chip.setText(movies ? R.string.movies_all : R.string.series_all);
                 chip.setTag(movies ? Movies.QUERY : Series.QUERY);
             } else {
-                chip.setText(source[i - 1][0]);
+                chip.setText(com.kamarguinho.supertube.util.Lang.t(source[i - 1][0]));
                 chip.setTag(movies ? Movies.genreQuery(source[i - 1][0])
                         : Series.genreQuery(source[i - 1][0]));
             }

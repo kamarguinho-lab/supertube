@@ -124,8 +124,8 @@ public final class Favorites {
     public List<StreamInfoItem> asItems() {
         final List<StreamInfoItem> items = new ArrayList<>();
         for (final Video v : all()) {
-            final StreamInfoItem item = new StreamInfoItem(v.serviceId, v.url, v.title,
-                    StreamType.VIDEO_STREAM);
+            final StreamInfoItem item = new StreamInfoItem(v.serviceId, v.url,
+                    com.kamarguinho.supertube.util.Lang.t(v.title), StreamType.VIDEO_STREAM);
             item.setUploaderName(v.uploader);
             if (v.thumbnail != null) {
                 item.setThumbnails(Collections.singletonList(new Image(v.thumbnail,

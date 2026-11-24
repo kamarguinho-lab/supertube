@@ -152,4 +152,10 @@
     <string name="tv_queue_row">Na playlist: %1$s</string>
     <string name="tv_chapters_row">Músicas deste vídeo</string>
     <string name="music_all">Todas as playlists</string>
+    <string name="live">AO VIVO</string>
+    <string name="channel">Canal</string>
+    <string name="seek_seconds">%1$d segundos</string>
+    <string name="language">Idioma</string>
+    <string name="language_current">Idioma / Language: %1$s</string>
+    <string name="language_system">Automático (idioma do aparelho)</string>
 </resources>

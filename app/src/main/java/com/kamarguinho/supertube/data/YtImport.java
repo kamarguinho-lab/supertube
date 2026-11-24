@@ -62,7 +62,7 @@ public final class YtImport {
         Page page = info.getNextPage();
         while (Page.isValid(page) && out.size() < MAX_VIDEOS) {
             if (progress != null) {
-                progress.onProgress(out.size() + " vídeos…");
+                progress.onProgress(out.size() + " " + com.kamarguinho.supertube.util.Lang.t("vídeos…"));
             }
             final ListExtractor.InfoItemsPage<StreamInfoItem> more =
                     PlaylistInfo.getMoreItems(service, url, page);
