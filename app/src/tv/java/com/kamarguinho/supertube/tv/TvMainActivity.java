@@ -66,7 +66,7 @@ public class TvMainActivity extends AppCompatActivity {
     private static final String[][] CATEGORIES = {
             {"Em alta", Trending.QUERY},
             {"Tudo", null},
-            {"Música", "música"},
+            {"Música", com.kamarguinho.supertube.data.Series.MUSIC},
             {"Jogos", "games gameplay"},
             {"Notícias", "notícias hoje"},
             {"Ao vivo", "ao vivo agora"},
@@ -113,6 +113,7 @@ public class TvMainActivity extends AppCompatActivity {
     private TvAdapters.RowsAdapter rowsAdapter;
     private final TvAdapters.RowsAdapter moviesRows = new TvAdapters.RowsAdapter();
     private final TvAdapters.SeriesRowsAdapter seriesRows = new TvAdapters.SeriesRowsAdapter();
+    private final TvAdapters.SeriesRowsAdapter musicRows = new TvAdapters.SeriesRowsAdapter();
     private final TvAdapters.VideoAdapter categoryGrid = new TvAdapters.VideoAdapter(true);
     private int chipSelected = 0;
     private int homeToken = 0;
@@ -415,6 +416,23 @@ public class TvMainActivity extends AppCompatActivity {
             return;
         }
 
+        if (com.kamarguinho.supertube.data.Series.MUSIC.equals(CATEGORIES[index][1])) {
+            // Música: playlists por estilo (cada uma com as músicas separadas)
+            homeList.setLayoutManager(new LinearLayoutManager(this));
+            homeList.setAdapter(musicRows);
+            if (musicRows.size() == 0) {
+                final List<TvAdapters.SeriesRow> rows = new ArrayList<>();
+                for (final String[] g : com.kamarguinho.supertube.data.Series.MUSIC_GENRES) {
+                    rows.add(new TvAdapters.SeriesRow(g[0],
+                            com.kamarguinho.supertube.data.Series.pagerFor(
+                                    com.kamarguinho.supertube.data.Series.musicQuery(g[0]))));
+                }
+                musicRows.set(rows);
+            }
+            progress.setVisibility(View.GONE);
+            message.setVisibility(View.GONE);
+            return;
+        }
         if (com.kamarguinho.supertube.data.Series.QUERY.equals(CATEGORIES[index][1])) {
             // Séries: uma fileira por gênero
             homeList.setLayoutManager(new LinearLayoutManager(this));

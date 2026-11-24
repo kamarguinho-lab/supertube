@@ -12,6 +12,12 @@ public class RelatedPlayer extends ForwardingPlayer {
     private final Runnable onNext;
     private final Runnable onPrevious;
     private boolean hasNext = false;
+    /** Se verdadeiro, o "anterior" sempre chama {@code onPrevious} (ele decide o que fazer). */
+    private boolean delegatePrevious = false;
+
+    public void setDelegatePrevious(final boolean value) {
+        delegatePrevious = value;
+    }
 
     public RelatedPlayer(final Player player, final Runnable onNext) {
         this(player, onNext, null);
@@ -27,7 +33,7 @@ public class RelatedPlayer extends ForwardingPlayer {
     @Override
     public void seekToPrevious() {
         // Como no YouTube: depois de 3 s volta ao início; antes disso, vídeo anterior
-        if (onPrevious != null && getCurrentPosition() <= 3000) {
+        if (onPrevious != null && (delegatePrevious || getCurrentPosition() <= 3000)) {
             onPrevious.run();
         } else {
             seekTo(0);

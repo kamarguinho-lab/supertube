@@ -53,11 +53,38 @@ public final class Series {
             {"Em inglês", "full tv series episodes", "full season episodes"},
     };
 
+    /** Texto especial da Música (playlists com músicas separadas). */
+    public static final String MUSIC = "__musica__";
+
+    /** Estilos de música: cada playlist tem as músicas separadas, para pular uma a uma. */
+    public static final String[][] MUSIC_GENRES = {
+            {"Mais tocadas", "playlist músicas mais tocadas 2025", "top 50 brasil playlist"},
+            {"Sertanejo", "playlist sertanejo 2025", "sertanejo universitário playlist"},
+            {"Funk", "playlist funk 2025", "funk mais tocados playlist"},
+            {"Pagode e samba", "playlist pagode", "playlist samba"},
+            {"Forró e piseiro", "playlist forró 2025", "playlist piseiro"},
+            {"Gospel", "playlist gospel 2025", "louvores playlist"},
+            {"MPB", "playlist mpb", "mpb clássicos playlist"},
+            {"Pop", "pop hits playlist 2025", "playlist pop internacional"},
+            {"Rock", "rock classics playlist", "playlist rock nacional"},
+            {"Eletrônica", "playlist música eletrônica", "edm hits playlist"},
+            {"Rap e hip-hop", "playlist rap nacional", "hip hop hits playlist"},
+            {"Românticas", "playlist músicas românticas", "love songs playlist"},
+            {"Anos 80 e 90", "playlist anos 80", "playlist anos 90"},
+            {"Reggae", "playlist reggae"},
+            {"Infantil", "playlist músicas infantis"},
+            {"Para relaxar", "playlist música para relaxar", "lofi playlist"},
+    };
+
     private Series() {
     }
 
     public static String genreQuery(final String genre) {
         return QUERY + ":" + genre;
+    }
+
+    public static String musicQuery(final String genre) {
+        return MUSIC + ":" + genre;
     }
 
     /** Entrega séries (playlists) aos poucos, sem fim enquanto houver buscas. */
@@ -68,9 +95,12 @@ public final class Series {
     }
 
     public static Pager pagerFor(final String query) {
-        if (query.startsWith(QUERY + ":")) {
-            final String name = query.substring(QUERY.length() + 1);
-            for (final String[] g : GENRES) {
+        final boolean music = query.startsWith(MUSIC);
+        final String prefix = music ? MUSIC : QUERY;
+        final String[][] genres = music ? MUSIC_GENRES : GENRES;
+        if (query.startsWith(prefix + ":")) {
+            final String name = query.substring(prefix.length() + 1);
+            for (final String[] g : genres) {
                 if (g[0].equals(name)) {
                     final String[] q = new String[g.length - 1];
                     System.arraycopy(g, 1, q, 0, q.length);
@@ -79,9 +109,9 @@ public final class Series {
             }
         }
         // "Todas": junta a primeira busca de cada gênero
-        final String[] all = new String[GENRES.length];
-        for (int i = 0; i < GENRES.length; i++) {
-            all[i] = GENRES[i][1];
+        final String[] all = new String[genres.length];
+        for (int i = 0; i < genres.length; i++) {
+            all[i] = genres[i][1];
         }
         return new SearchPager(all);
     }

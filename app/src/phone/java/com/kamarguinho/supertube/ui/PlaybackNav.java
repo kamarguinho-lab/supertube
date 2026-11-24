@@ -29,6 +29,10 @@ public final class PlaybackNav {
     private PlaybackNav() {
     }
 
+    public static StreamInfo currentInfo() {
+        return PlayerActivity.current();
+    }
+
     static void attach(final PlayerActivity activity) {
         active = new WeakReference<>(activity);
     }
@@ -70,6 +74,14 @@ public final class PlaybackNav {
             if (info == null) {
                 return;
             }
+            // Vídeo com várias músicas (capítulos): pula para a próxima música
+            final com.google.android.exoplayer2.ExoPlayer p = PlayerService.getPlayer(context);
+            final long chapter = com.kamarguinho.supertube.player.Chapters.nextStart(info,
+                    p.getCurrentPosition());
+            if (chapter >= 0) {
+                p.seekTo(chapter);
+                return;
+            }
             if (PlayQueue.contains(info.getUrl())) {
                 Bg.run(() -> PlayQueue.nextAfter(info.getUrl()), new Bg.Callback<String>() {
                     @Override
@@ -103,6 +115,18 @@ public final class PlaybackNav {
 
     public static void previous(final Context context) {
         MAIN.post(() -> {
+            // Dentro de um vídeo com músicas: volta para o começo da música / anterior
+            final com.google.android.exoplayer2.ExoPlayer p = PlayerService.getPlayer(context);
+            final long chapter = com.kamarguinho.supertube.player.Chapters.previousStart(
+                    PlayerActivity.current(), p.getCurrentPosition());
+            if (chapter >= 0) {
+                p.seekTo(chapter);
+                return;
+            }
+            if (p.getCurrentPosition() > 3000) {
+                p.seekTo(0);
+                return;
+            }
             final String url = popBack();
             if (url != null) {
                 play(context, url, false);

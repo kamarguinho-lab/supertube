@@ -44,6 +44,8 @@ import org.schabi.newpipe.extractor.NewPipe;
 import org.schabi.newpipe.extractor.stream.StreamInfo;
 import org.schabi.newpipe.extractor.stream.StreamInfoItem;
 
+import java.util.List;
+
 /**
  * Player em tela cheia. Controle remoto: OK mostra os controles, play/pause funciona,
  * Menu favorita, e o próximo vídeo começa sozinho no final.
@@ -138,7 +140,7 @@ public class TvPlayerActivity extends AppCompatActivity {
         });
         // Controles como no YouTube da TV: play/pausa no centro e barra vermelha;
         // setas esquerda/direita voltam/avançam 10 s (segurando, acelera)
-        relatedPlayer = new RelatedPlayer(player, this::playNext);
+        relatedPlayer = new RelatedPlayer(player, this::skipForward);
         playerView.setPlayer(relatedPlayer);
         playerView.setShowRewindButton(false);
         playerView.setShowFastForwardButton(false);
@@ -276,6 +278,17 @@ public class TvPlayerActivity extends AppCompatActivity {
         playRelated(now);
     }
 
+    /** "Próximo": próxima música do vídeo (capítulo) se houver; senão, próximo vídeo. */
+    private void skipForward() {
+        final long chapter = com.kamarguinho.supertube.player.Chapters.nextStart(current,
+                player.getCurrentPosition());
+        if (chapter >= 0) {
+            player.seekTo(chapter);
+        } else {
+            playNext();
+        }
+    }
+
     private void playRelated(final StreamInfo now) {
         if (now != current) {
             return;
@@ -301,11 +314,13 @@ public class TvPlayerActivity extends AppCompatActivity {
             return true;
         }
         if (keyCode == KeyEvent.KEYCODE_MEDIA_NEXT) {
-            playNext();
+            skipForward();
             return true;
         }
         if (keyCode == KeyEvent.KEYCODE_MEDIA_PREVIOUS) {
-            player.seekTo(0);
+            final long chapter = com.kamarguinho.supertube.player.Chapters.previousStart(current,
+                    player.getCurrentPosition());
+            player.seekTo(Math.max(0, chapter));
             return true;
         }
         return super.onKeyDown(keyCode, event);
@@ -413,6 +428,68 @@ public class TvPlayerActivity extends AppCompatActivity {
     /** Primeiras fileiras: A seguir, Mais do canal e Populares (cada uma sem fim para o lado). */
     private void buildPanelRows(final StreamInfo info, final int t) {
         usedSeeds.add(info.getUrl());
+
+        // Músicas deste vídeo (capítulos): escolher pula direto para a música
+        final List<org.schabi.newpipe.extractor.stream.StreamSegment> segs =
+                com.kamarguinho.supertube.player.Chapters.of(info);
+        if (!segs.isEmpty()) {
+            final TvAdapters.Row chapters = new TvAdapters.Row(getString(R.string.tv_chapters_row));
+            final List<StreamInfoItem> items = new java.util.ArrayList<>();
+            for (int i = 0; i < segs.size(); i++) {
+                final org.schabi.newpipe.extractor.stream.StreamSegment s = segs.get(i);
+                final StreamInfoItem item = new StreamInfoItem(info.getServiceId(),
+                        info.getUrl() + "#t=" + s.getStartTimeSeconds(),
+                        (i + 1) + ". " + s.getTitle(),
+                        org.schabi.newpipe.extractor.stream.StreamType.VIDEO_STREAM);
+                item.setUploaderName(com.kamarguinho.supertube.player.Chapters.time(
+                        s.getStartTimeSeconds()));
+                final String thumb = s.getPreviewUrl() != null ? s.getPreviewUrl()
+                        : Images.best(info.getThumbnails());
+                if (thumb != null) {
+                    item.setThumbnails(java.util.Collections.singletonList(
+                            new org.schabi.newpipe.extractor.Image(thumb,
+                                    org.schabi.newpipe.extractor.Image.HEIGHT_UNKNOWN,
+                                    org.schabi.newpipe.extractor.Image.WIDTH_UNKNOWN,
+                                    org.schabi.newpipe.extractor.Image.ResolutionLevel.UNKNOWN)));
+                }
+                items.add(item);
+            }
+            chapters.adapter.set(items);
+            chapters.loading = false;
+            chapters.adapter.clickOverride = item -> {
+                final int idx = items.indexOf(item);
+                if (idx >= 0) {
+                    player.seekTo(segs.get(idx).getStartTimeSeconds() * 1000L);
+                    player.play();
+                    hidePanel();
+                }
+            };
+            rowsAdapter.add(chapters);
+        }
+
+        // Playlist/série que está tocando, com as próximas músicas
+        if (com.kamarguinho.supertube.player.PlayQueue.contains(info.getUrl())) {
+            final List<StreamInfoItem> queue = com.kamarguinho.supertube.player.PlayQueue.items();
+            final int pos = com.kamarguinho.supertube.player.PlayQueue.position(info.getUrl());
+            final String name = com.kamarguinho.supertube.player.PlayQueue.title();
+            final TvAdapters.Row q = new TvAdapters.Row(getString(R.string.tv_queue_row,
+                    (name != null ? name : getString(R.string.playlists))
+                            + "  (" + (pos + 1) + "/" + queue.size() + ")"));
+            // Começa pela próxima música e depois as anteriores
+            final List<StreamInfoItem> ordered = new java.util.ArrayList<>();
+            for (int i = pos + 1; i < queue.size(); i++) {
+                ordered.add(queue.get(i));
+            }
+            for (int i = 0; i < pos; i++) {
+                ordered.add(queue.get(i));
+            }
+            q.adapter.set(ordered);
+            q.loading = false;
+            q.adapter.clickOverride = item -> load(item.getUrl());
+            if (!ordered.isEmpty()) {
+                rowsAdapter.add(q);
+            }
+        }
         rowsAdapter.start(new TvAdapters.Row(getString(R.string.tv_related),
                 com.kamarguinho.supertube.data.Pagers.startingWith(
                         TvAdapters.streamsOnly(info.getRelatedItems()))));

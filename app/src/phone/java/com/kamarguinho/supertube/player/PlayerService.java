@@ -103,11 +103,8 @@ public class PlayerService extends Service {
 
             @Override
             public void onSkipToPrevious(@NonNull final Player player) {
-                if (player.getCurrentPosition() > 3000) {
-                    player.seekTo(0);
-                } else {
-                    com.kamarguinho.supertube.ui.PlaybackNav.previous(PlayerService.this);
-                }
+                // Decide entre: começo da música, música anterior ou vídeo anterior
+                com.kamarguinho.supertube.ui.PlaybackNav.previous(PlayerService.this);
             }
 
             @Override
@@ -161,6 +158,7 @@ public class PlayerService extends Service {
                 () -> com.kamarguinho.supertube.ui.PlaybackNav.next(this),
                 () -> com.kamarguinho.supertube.ui.PlaybackNav.previous(this));
         navPlayer.setHasNext(true);
+        navPlayer.setDelegatePrevious(true);
         notificationManager.setPlayer(navPlayer);
     }
 

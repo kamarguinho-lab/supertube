@@ -82,7 +82,7 @@ public class MainActivity extends AppCompatActivity {
     /** Categorias da tela inicial (nome mostrado, texto pesquisado). */
     private static final String[][] CATEGORIES = {
             {"Em alta", Trending.QUERY},
-            {"Música", "música"},
+            {"Música", Series.MUSIC},
             {"Jogos", "games gameplay"},
             {"Notícias", "notícias hoje"},
             {"Ao vivo", "ao vivo agora"},
@@ -337,7 +337,12 @@ public class MainActivity extends AppCompatActivity {
                 lastChipQuery = (String) chip.getTag();
                 final boolean movies = Movies.QUERY.equals(lastChipQuery);
                 final boolean series = Series.QUERY.equals(lastChipQuery);
-                genreScroll.setVisibility(movies || series ? View.VISIBLE : View.GONE);
+                final boolean music = Series.MUSIC.equals(lastChipQuery);
+                genreScroll.setVisibility(movies || series || music ? View.VISIBLE : View.GONE);
+                if (music) {
+                    fillMusicGenres();
+                    return;
+                }
                 if (movies || series) {
                     // Monta os gêneros desta categoria; o primeiro ("Todos") já busca
                     fillGenres(movies);
@@ -813,7 +818,8 @@ public class MainActivity extends AppCompatActivity {
         chipsScroll.setVisibility(View.VISIBLE);
         genreScroll.setVisibility(lastChipQuery != null
                 && (lastChipQuery.startsWith(Movies.QUERY)
-                || lastChipQuery.startsWith(Series.QUERY)) ? View.VISIBLE : View.GONE);
+                || lastChipQuery.startsWith(Series.QUERY)
+                || lastChipQuery.startsWith(Series.MUSIC)) ? View.VISIBLE : View.GONE);
         list.setAdapter(searchAdapter);
         if (searchAdapter.getItemCount() == 0) {
             message.setText(R.string.search_hint_message);
@@ -852,6 +858,40 @@ public class MainActivity extends AppCompatActivity {
         if (!q.isEmpty()) {
             search(q);
         }
+    }
+
+    /** Estilos de Música: cada um lista playlists com as músicas separadas. */
+    private void fillMusicGenres() {
+        genreGroup.setOnCheckedStateChangeListener(null);
+        genreGroup.removeAllViews();
+        for (int i = 0; i <= Series.MUSIC_GENRES.length; i++) {
+            final Chip chip = (Chip) LayoutInflater.from(this)
+                    .inflate(R.layout.chip_category, genreGroup, false);
+            chip.setId(View.generateViewId());
+            if (i == 0) {
+                chip.setText(R.string.music_all);
+                chip.setTag(Series.MUSIC);
+            } else {
+                chip.setText(Series.MUSIC_GENRES[i - 1][0]);
+                chip.setTag(Series.musicQuery(Series.MUSIC_GENRES[i - 1][0]));
+            }
+            genreGroup.addView(chip);
+            if (i == 0) {
+                chip.setChecked(true);
+            }
+        }
+        genreGroup.setOnCheckedStateChangeListener((group, ids) -> {
+            if (ids.isEmpty()) {
+                return;
+            }
+            final Chip chip = group.findViewById(ids.get(0));
+            if (chip != null) {
+                lastChipQuery = (String) chip.getTag();
+                search(lastChipQuery);
+            }
+        });
+        lastChipQuery = Series.MUSIC;
+        search(lastChipQuery);
     }
 
     /** Botões de gênero (Filmes ou Séries). */
@@ -898,7 +938,7 @@ public class MainActivity extends AppCompatActivity {
         progress.setVisibility(View.VISIBLE);
         lastQueryText = q;
         seriesPager = null;
-        if (q.startsWith(Series.QUERY)) {
+        if (q.startsWith(Series.QUERY) || q.startsWith(Series.MUSIC)) {
             // Séries: lista de séries (cada uma abre a página de episódios)
             final Series.Pager sp = Series.pagerFor(q);
             seriesPager = sp;

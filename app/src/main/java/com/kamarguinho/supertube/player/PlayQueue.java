@@ -16,6 +16,7 @@ import java.util.List;
 public final class PlayQueue {
 
     private static final List<String> URLS = new ArrayList<>();
+    private static final List<StreamInfoItem> ITEMS = new ArrayList<>();
     private static Pagers.Pager more;
     private static String title;
 
@@ -26,8 +27,10 @@ public final class PlayQueue {
                                         final List<StreamInfoItem> episodes,
                                         @Nullable final Pagers.Pager pager) {
         URLS.clear();
+        ITEMS.clear();
         for (final StreamInfoItem e : episodes) {
             URLS.add(e.getUrl());
+            ITEMS.add(e);
         }
         more = pager;
         title = queueTitle;
@@ -35,6 +38,7 @@ public final class PlayQueue {
 
     public static synchronized void clear() {
         URLS.clear();
+        ITEMS.clear();
         more = null;
         title = null;
     }
@@ -46,6 +50,16 @@ public final class PlayQueue {
     @Nullable
     public static synchronized String title() {
         return title;
+    }
+
+    /** Vídeos da fila (para mostrar a lista no player). */
+    public static synchronized List<StreamInfoItem> items() {
+        return new ArrayList<>(ITEMS);
+    }
+
+    /** Posição do vídeo na fila (0 = primeiro), ou -1. */
+    public static synchronized int position(final String url) {
+        return indexOf(url);
     }
 
     private static int indexOf(final String url) {
@@ -82,6 +96,7 @@ public final class PlayQueue {
         synchronized (PlayQueue.class) {
             for (final StreamInfoItem e : extra) {
                 URLS.add(e.getUrl());
+                ITEMS.add(e);
             }
             final int i = indexOf(url);
             return i >= 0 && i + 1 < URLS.size() ? URLS.get(i + 1) : null;

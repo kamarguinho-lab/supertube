@@ -153,6 +153,7 @@ public class PlayerActivity extends AppCompatActivity {
         findViewById(R.id.subtitles).setOnClickListener(v -> chooseSubtitle());
         findViewById(R.id.quality).setOnClickListener(v -> chooseQuality());
         findViewById(R.id.audio_dub).setOnClickListener(v -> chooseAudio());
+        setupQueueAndChapters();
         findViewById(R.id.save_playlist).setOnClickListener(v -> {
             final StreamInfo info = currentInfo;
             if (info != null) {
@@ -180,6 +181,7 @@ public class PlayerActivity extends AppCompatActivity {
         // Próximo/anterior passam pelo PlaybackNav (o mesmo do Bluetooth e da notificação)
         relatedPlayer = new RelatedPlayer(player, () -> PlaybackNav.next(this),
                 () -> PlaybackNav.previous(this));
+        relatedPlayer.setDelegatePrevious(true);
         PlaybackNav.attach(this);
         playerView.setPlayer(relatedPlayer);
         playerView.setShowRewindButton(false);
@@ -507,7 +509,129 @@ public class PlayerActivity extends AppCompatActivity {
         }
     }
 
+    // ---------- Fila (playlist) e capítulos (músicas do vídeo) ----------
+
+    private QueueAdapter queueAdapter;
+    private QueueAdapter chaptersAdapter;
+    private final android.os.Handler ticker = new android.os.Handler(
+            android.os.Looper.getMainLooper());
+    private final Runnable tick = new Runnable() {
+        @Override
+        public void run() {
+            updateCurrentChapter();
+            ticker.postDelayed(this, 1000);
+        }
+    };
+
+    private void setupQueueAndChapters() {
+        final RecyclerView queueList = findViewById(R.id.queue_list);
+        queueList.setLayoutManager(new LinearLayoutManager(this));
+        queueAdapter = new QueueAdapter(pos -> {
+            final List<org.schabi.newpipe.extractor.stream.StreamInfoItem> items =
+                    com.kamarguinho.supertube.player.PlayQueue.items();
+            if (pos >= 0 && pos < items.size()) {
+                load(items.get(pos).getUrl());
+            }
+        });
+        queueList.setAdapter(queueAdapter);
+        findViewById(R.id.queue_header).setOnClickListener(v -> queueList.setVisibility(
+                queueList.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE));
+
+        final RecyclerView chapterList = findViewById(R.id.chapters_list);
+        chapterList.setLayoutManager(new LinearLayoutManager(this));
+        chaptersAdapter = new QueueAdapter(pos -> {
+            final List<org.schabi.newpipe.extractor.stream.StreamSegment> segs =
+                    com.kamarguinho.supertube.player.Chapters.of(currentInfo);
+            if (pos >= 0 && pos < segs.size()) {
+                player.seekTo(segs.get(pos).getStartTimeSeconds() * 1000L);
+                player.play();
+                updateCurrentChapter();
+            }
+        });
+        chapterList.setAdapter(chaptersAdapter);
+        findViewById(R.id.chapters_header).setOnClickListener(v -> chapterList.setVisibility(
+                chapterList.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE));
+    }
+
+    /** Mostra a playlist que está tocando (com a música atual) e os capítulos do vídeo. */
+    private void showQueueAndChapters(final StreamInfo info) {
+        // Playlist / série / fila
+        final View queueBox = findViewById(R.id.queue_box);
+        final int pos = com.kamarguinho.supertube.player.PlayQueue.position(info.getUrl());
+        if (pos >= 0) {
+            final List<org.schabi.newpipe.extractor.stream.StreamInfoItem> items =
+                    com.kamarguinho.supertube.player.PlayQueue.items();
+            final List<QueueAdapter.Row> rows = new java.util.ArrayList<>();
+            for (final org.schabi.newpipe.extractor.stream.StreamInfoItem i : items) {
+                rows.add(new QueueAdapter.Row(i.getName(), i.getUploaderName(),
+                        Images.best(i.getThumbnails())));
+            }
+            queueAdapter.set(rows, pos);
+            final String name = com.kamarguinho.supertube.player.PlayQueue.title();
+            ((TextView) findViewById(R.id.queue_title)).setText(getString(R.string.queue_pos,
+                    name != null ? name : getString(R.string.playlists), pos + 1, items.size()));
+            ((TextView) findViewById(R.id.queue_sub)).setText(pos + 1 < items.size()
+                    ? getString(R.string.queue_next, items.get(pos + 1).getName())
+                    : getString(R.string.queue_tap));
+            queueBox.setVisibility(View.VISIBLE);
+            ((RecyclerView) findViewById(R.id.queue_list)).scrollToPosition(pos);
+        } else {
+            queueBox.setVisibility(View.GONE);
+        }
+
+        // Capítulos: cada música de um vídeo-compilação ou álbum completo
+        final List<org.schabi.newpipe.extractor.stream.StreamSegment> segs =
+                com.kamarguinho.supertube.player.Chapters.of(info);
+        final View chaptersBox = findViewById(R.id.chapters_box);
+        if (!segs.isEmpty()) {
+            final List<QueueAdapter.Row> rows = new java.util.ArrayList<>();
+            for (final org.schabi.newpipe.extractor.stream.StreamSegment s : segs) {
+                rows.add(new QueueAdapter.Row(s.getTitle(),
+                        com.kamarguinho.supertube.player.Chapters.time(s.getStartTimeSeconds()),
+                        s.getPreviewUrl()));
+            }
+            chaptersAdapter.set(rows, 0);
+            ((TextView) findViewById(R.id.chapters_title)).setText(
+                    getString(R.string.chapters_title, segs.size()));
+            chaptersBox.setVisibility(View.VISIBLE);
+            findViewById(R.id.chapters_list).setVisibility(View.VISIBLE);
+            updateCurrentChapter();
+        } else {
+            chaptersBox.setVisibility(View.GONE);
+        }
+    }
+
+    private void updateCurrentChapter() {
+        final List<org.schabi.newpipe.extractor.stream.StreamSegment> segs =
+                com.kamarguinho.supertube.player.Chapters.of(currentInfo);
+        if (segs.isEmpty() || chaptersAdapter == null) {
+            return;
+        }
+        final int i = com.kamarguinho.supertube.player.Chapters.indexAt(segs,
+                player.getCurrentPosition());
+        chaptersAdapter.setCurrent(i);
+        ((TextView) findViewById(R.id.chapters_sub)).setText(
+                getString(R.string.chapters_now, segs.get(i).getTitle()));
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        ticker.removeCallbacks(tick);
+        ticker.post(tick);
+        if (currentInfo != null) {
+            showQueueAndChapters(currentInfo);
+        }
+    }
+
+    @Override
+    protected void onStop() {
+        ticker.removeCallbacks(tick);
+        super.onStop();
+    }
+
     private void showInfo(final StreamInfo info) {
+        showQueueAndChapters(info);
         relatedPlayer.setHasNext(!info.getRelatedItems().isEmpty());
         progress.setVisibility(View.GONE);
         title.setText(info.getName());

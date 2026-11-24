@@ -144,4 +144,12 @@
     <string name="pl_no_playlists">Este canal não tem playlists públicas.</string>
     <string name="series_play_all">▶  Tocar tudo</string>
     <string name="import_playlists_extra">\nPlaylists importadas: %1$d.</string>
+    <string name="queue_pos">%1$s • %2$d de %3$d</string>
+    <string name="queue_next">Próxima: %1$s</string>
+    <string name="queue_tap">Toque para ver a lista</string>
+    <string name="chapters_title">Músicas deste vídeo (%1$d)</string>
+    <string name="chapters_now">Agora: %1$s</string>
+    <string name="tv_queue_row">Na playlist: %1$s</string>
+    <string name="tv_chapters_row">Músicas deste vídeo</string>
+    <string name="music_all">Todas as playlists</string>
 </resources>

@@ -94,13 +94,25 @@ public final class Updater {
             if (build <= BuildConfig.VERSION_CODE) {
                 return null;
             }
+            // Prefere o arquivo com a versão no nome (SuperTube-1.0.N.apk / SuperTube-TV-1.0.N.apk)
             final JSONArray assets = json.optJSONArray("assets");
+            final boolean tv = "tv".equals(BuildConfig.FLAVOR);
+            String fallback = null;
             for (int i = 0; assets != null && i < assets.length(); i++) {
                 final JSONObject a = assets.getJSONObject(i);
-                if (apkName().equals(a.optString("name"))) {
+                final String name = a.optString("name");
+                final boolean isTv = name.startsWith("SuperTube-TV");
+                if (!name.endsWith(".apk") || !name.startsWith("SuperTube") || isTv != tv) {
+                    continue;
+                }
+                if (name.matches(".*-\\d+\\.\\d+\\.\\d+\\.apk")) {
                     return new Release(build, a.getString("browser_download_url"),
                             json.optString("body", ""));
                 }
+                fallback = a.getString("browser_download_url");
+            }
+            if (fallback != null) {
+                return new Release(build, fallback, json.optString("body", ""));
             }
             throw new IOException("A versão nova não tem o arquivo " + apkName());
         }

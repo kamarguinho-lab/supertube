@@ -26,29 +26,35 @@ jobs:
           chmod +x gradlew
           ./gradlew --no-daemon assemblePhoneDebug assembleTvDebug
 
-      - name: Renomear APKs
+      - name: Renomear APKs (com a versão no nome)
         run: |
-          cp app/build/outputs/apk/phone/debug/app-phone-debug.apk SuperTube.apk
-          cp app/build/outputs/apk/tv/debug/app-tv-debug.apk SuperTube-TV.apk
+          V="1.0.${{ github.run_number }}"
+          cp app/build/outputs/apk/phone/debug/app-phone-debug.apk "SuperTube-$V.apk"
+          cp app/build/outputs/apk/tv/debug/app-tv-debug.apk "SuperTube-TV-$V.apk"
+          # Nomes antigos: o botão Atualizar das versões já instaladas procura por eles
+          cp "SuperTube-$V.apk" SuperTube.apk
+          cp "SuperTube-TV-$V.apk" SuperTube-TV.apk
 
       - name: Guardar APK no build
         uses: actions/upload-artifact@v4
         with:
           name: SuperTube-apks
           path: |
-            SuperTube.apk
-            SuperTube-TV.apk
+            SuperTube-1.0.*.apk
+            SuperTube-TV-1.0.*.apk
 
       - name: Publicar na página de Releases
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
-          name: SuperTube build ${{ github.run_number }}
+          name: SuperTube 1.0.${{ github.run_number }}
           make_latest: true
           body: |
-            - **SuperTube.apk**: para celular
-            - **SuperTube-TV.apk**: para Android TV / Google TV
+            - **SuperTube-1.0.${{ github.run_number }}.apk**: para celular
+            - **SuperTube-TV-1.0.${{ github.run_number }}.apk**: para Android TV / Google TV
             Commit: ${{ github.sha }}
           files: |
+            SuperTube-1.0.${{ github.run_number }}.apk
+            SuperTube-TV-1.0.${{ github.run_number }}.apk
             SuperTube.apk
             SuperTube-TV.apk
