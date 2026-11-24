@@ -251,6 +251,12 @@ public class TvMainActivity extends AppCompatActivity {
                 com.kamarguinho.supertube.util.LangUi.currentLabel(this)));
         language.setOnClickListener(v -> com.kamarguinho.supertube.util.LangUi.show(this));
 
+        // Backup: o celular abre um endereço da TV no navegador (só na rede de casa)
+        final View backup = findViewById(R.id.rail_backup);
+        ((ImageView) backup.findViewById(R.id.rail_icon)).setImageResource(R.drawable.ic_download);
+        ((TextView) backup.findViewById(R.id.rail_label)).setText(R.string.backup_title);
+        backup.setOnClickListener(v -> showBackup());
+
         // Botão Atualizar, no fim do menu
         final View update = findViewById(R.id.rail_update);
         ((ImageView) update.findViewById(R.id.rail_icon)).setImageResource(R.drawable.ic_update);
@@ -298,6 +304,8 @@ public class TvMainActivity extends AppCompatActivity {
         findViewById(R.id.rail_update).findViewById(R.id.rail_label)
                 .setVisibility(expanded ? View.VISIBLE : View.GONE);
         findViewById(R.id.rail_language).findViewById(R.id.rail_label)
+                .setVisibility(expanded ? View.VISIBLE : View.GONE);
+        findViewById(R.id.rail_backup).findViewById(R.id.rail_label)
                 .setVisibility(expanded ? View.VISIBLE : View.GONE);
     }
 
@@ -991,5 +999,40 @@ public class TvMainActivity extends AppCompatActivity {
         progress.setVisibility(View.GONE);
         message.setText(getString(R.string.error_prefix, Images.errorMessage(error)));
         message.setVisibility(View.VISIBLE);
+    }
+
+    // ---------- Backup pela rede de casa ----------
+
+    private void showBackup() {
+        final BackupServer[] holder = new BackupServer[1];
+        final BackupServer server = new BackupServer(this, new BackupServer.Listener() {
+            @Override
+            public void onRestored(final int count) {
+                Toast.makeText(TvMainActivity.this, getString(R.string.backup_restored, count),
+                        Toast.LENGTH_LONG).show();
+                holder[0].stop();
+                recreate();
+            }
+
+            @Override
+            public void onError(final String message) {
+                Toast.makeText(TvMainActivity.this, message, Toast.LENGTH_LONG).show();
+            }
+        });
+        holder[0] = server;
+        final String address;
+        try {
+            address = server.start();
+        } catch (final Exception e) {
+            server.stop();
+            Toast.makeText(this, R.string.backup_no_wifi, Toast.LENGTH_LONG).show();
+            return;
+        }
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.backup_title)
+                .setMessage(getString(R.string.backup_tv_info, address))
+                .setPositiveButton(R.string.close, null)
+                .setOnDismissListener(d -> server.stop())
+                .show();
     }
 }

@@ -17,6 +17,7 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.activity.result.ActivityResultLauncher;
@@ -150,6 +151,68 @@ public class MainActivity extends AppCompatActivity {
                 }
             });
 
+    /** Backup: salvar e restaurar o arquivo SuperTube-backup.json. */
+    private final ActivityResultLauncher<String> backupSaver =
+            registerForActivityResult(new ActivityResultContracts.CreateDocument(
+                    "application/json"), uri -> {
+                if (uri == null) {
+                    return;
+                }
+                com.kamarguinho.supertube.util.Bg.run(() -> {
+                    final byte[] data = com.kamarguinho.supertube.data.Backup.toJson(this)
+                            .getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                    try (java.io.OutputStream out = getContentResolver().openOutputStream(uri)) {
+                        out.write(data);
+                    }
+                    return true;
+                }, new com.kamarguinho.supertube.util.Bg.Callback<Boolean>() {
+                    @Override
+                    public void onResult(final Boolean ok) {
+                        Toast.makeText(MainActivity.this, R.string.backup_saved,
+                                Toast.LENGTH_LONG).show();
+                    }
+
+                    @Override
+                    public void onError(final Throwable e) {
+                        Toast.makeText(MainActivity.this, Images.errorMessage(e),
+                                Toast.LENGTH_LONG).show();
+                    }
+                });
+            });
+
+    private final ActivityResultLauncher<String[]> backupPicker =
+            registerForActivityResult(new ActivityResultContracts.OpenDocument(), uri -> {
+                if (uri == null) {
+                    return;
+                }
+                com.kamarguinho.supertube.util.Bg.run(() -> {
+                    try (java.io.InputStream in = getContentResolver().openInputStream(uri)) {
+                        final java.io.ByteArrayOutputStream b = new java.io.ByteArrayOutputStream();
+                        final byte[] buf = new byte[64 * 1024];
+                        int n;
+                        while ((n = in.read(buf)) > 0) {
+                            b.write(buf, 0, n);
+                        }
+                        return com.kamarguinho.supertube.data.Backup.restore(this,
+                                b.toString("UTF-8"));
+                    }
+                }, new com.kamarguinho.supertube.util.Bg.Callback<Integer>() {
+                    @Override
+                    public void onResult(final Integer count) {
+                        Toast.makeText(MainActivity.this,
+                                getString(R.string.backup_restored, count),
+                                Toast.LENGTH_LONG).show();
+                        recreate();
+                    }
+
+                    @Override
+                    public void onError(final Throwable e) {
+                        Toast.makeText(MainActivity.this, Images.errorMessage(e),
+                                Toast.LENGTH_LONG).show();
+                    }
+                });
+            });
+
     private Pagers.Pager searchPager;
     private String lastQueryText;
     private boolean loadingMore = false;
@@ -206,6 +269,11 @@ public class MainActivity extends AppCompatActivity {
                 com.kamarguinho.supertube.update.Updater.checkAndPrompt(this, false));
         ((TextView) findViewById(R.id.version_text)).setText(getString(R.string.version_label,
                 com.kamarguinho.supertube.update.Updater.currentVersion()));
+        findViewById(R.id.backup_save).setOnClickListener(v ->
+                backupSaver.launch(com.kamarguinho.supertube.data.Backup.fileName()));
+        findViewById(R.id.backup_restore).setOnClickListener(v ->
+                backupPicker.launch(new String[]{"application/json", "application/octet-stream",
+                        "text/plain", "*/*"}));
         findViewById(R.id.takeout_import).setOnClickListener(v ->
                 takeoutPicker.launch(new String[]{"application/zip", "text/csv",
                         "text/comma-separated-values", "text/plain",

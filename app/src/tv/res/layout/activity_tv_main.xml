@@ -307,6 +307,10 @@
             layout="@layout/tv_rail_item" />
 
         <include
+            android:id="@+id/rail_backup"
+            layout="@layout/tv_rail_item" />
+
+        <include
             android:id="@+id/rail_update"
             layout="@layout/tv_rail_item" />
 

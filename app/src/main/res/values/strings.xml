@@ -166,4 +166,13 @@
     <string name="download_joining">Juntando vídeo e áudio…</string>
     <string name="download_done">Download concluído (Downloads/SuperTube)</string>
     <string name="download_failed">Falha no download:</string>
+    <string name="backup_title">Backup</string>
+    <string name="backup_phone_info">Guarda playlists, favoritos, inscrições e histórico num arquivo. Serve para trocar de celular ou reinstalar o app sem perder nada.</string>
+    <string name="backup_save">Salvar backup</string>
+    <string name="backup_restore">Restaurar backup</string>
+    <string name="backup_saved">Backup salvo.</string>
+    <string name="backup_restored">Backup restaurado (%1$d itens).</string>
+    <string name="backup_no_wifi">Conecte a TV ao Wi-Fi da sua casa para fazer o backup.</string>
+    <string name="backup_tv_info">No celular, ligado no mesmo Wi-Fi da TV, abra o navegador e digite:\n\n%1$s\n\nLá você pode baixar o backup da TV ou enviar um backup para ela. Deixe esta janela aberta enquanto isso.</string>
+    <string name="close">Fechar</string>
 </resources>
