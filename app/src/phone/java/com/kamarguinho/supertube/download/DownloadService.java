@@ -223,7 +223,7 @@ public class DownloadService extends Service {
         final String ua = YoutubeParsingHelper.isVisionOsStreamingUrl(url)
                 ? YoutubeParsingHelper.getVisionOsUserAgent(null)
                 : DownloaderImpl.USER_AGENT;
-        final OkHttpClient client = DownloaderImpl.getClient();
+        final OkHttpClient client = DownloaderImpl.getInstance().getClient();
         long total = -1;
         if (stream.getItagItem() != null && stream.getItagItem().getContentLength() > 0) {
             total = stream.getItagItem().getContentLength();
