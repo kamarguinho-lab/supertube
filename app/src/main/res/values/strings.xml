@@ -158,4 +158,12 @@
     <string name="language">Idioma</string>
     <string name="language_current">Idioma / Language: %1$s</string>
     <string name="language_system">Automático (idioma do aparelho)</string>
+    <string name="download_mp3">MP3 (só áudio)</string>
+    <string name="download_720">Vídeo 720p (HD)</string>
+    <string name="download_1080">Vídeo 1080p (Full HD)</string>
+    <string name="download_video">Vídeo</string>
+    <string name="download_converting">Convertendo para MP3…</string>
+    <string name="download_joining">Juntando vídeo e áudio…</string>
+    <string name="download_done">Download concluído (Downloads/SuperTube)</string>
+    <string name="download_failed">Falha no download:</string>
 </resources>

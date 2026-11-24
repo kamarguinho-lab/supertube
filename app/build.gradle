@@ -20,6 +20,25 @@ android {
                 "\"${project.findProperty('firebaseApiKey') ?: ''}\""
         buildConfigField 'String', 'FIREBASE_DB_URL',
                 "\"${project.findProperty('firebaseDbUrl') ?: ''}\""
+        ndk {
+            abiFilters 'arm64-v8a', 'armeabi-v7a', 'x86_64'
+        }
+    }
+
+    // Codificador MP3 (LAME) em C, usado pelos downloads do celular
+    externalNativeBuild {
+        cmake {
+            path 'src/main/cpp/CMakeLists.txt'
+        }
+    }
+    // Usa o NDK mais novo já instalado (no GitHub Actions já vem instalado)
+    def ndkRoot = new File(System.getenv('ANDROID_HOME') ?: System.getenv('ANDROID_SDK_ROOT') ?: '', 'ndk')
+    def ndks = ndkRoot.isDirectory() ? ndkRoot.list().findAll { it ==~ /\d+\.\d+\.\d+/ } : []
+    if (ndks) {
+        ndkVersion ndks.max { v ->
+            def p = v.tokenize('.')*.toLong()
+            p[0] * 100_000_000_000_000_000L + p[1] * 1_000_000_000L + p[2]
+        }
     }
 
     // Chave fixa para que cada APK novo instale por cima do antigo

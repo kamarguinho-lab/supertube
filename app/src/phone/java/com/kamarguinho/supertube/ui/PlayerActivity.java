@@ -40,7 +40,8 @@ import com.google.android.exoplayer2.ui.StyledPlayerView;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.kamarguinho.supertube.R;
-import com.kamarguinho.supertube.data.Downloads;
+import com.kamarguinho.supertube.download.DownloadOptions;
+import com.kamarguinho.supertube.download.DownloadService;
 import com.kamarguinho.supertube.data.Favorites;
 import com.kamarguinho.supertube.data.History;
 import com.kamarguinho.supertube.data.Subscriptions;
@@ -58,7 +59,9 @@ import org.schabi.newpipe.extractor.NewPipe;
 import org.schabi.newpipe.extractor.StreamingService;
 import org.schabi.newpipe.extractor.stream.Description;
 import org.schabi.newpipe.extractor.stream.StreamInfo;
+import org.schabi.newpipe.extractor.stream.VideoStream;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -920,25 +923,44 @@ public class PlayerActivity extends AppCompatActivity {
                     new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 2);
             return;
         }
-        final List<Downloads.Option> options = Downloads.options(info);
-        if (options.isEmpty()) {
+        if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(this,
+                Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            // Só para mostrar o progresso; o download funciona mesmo sem
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.POST_NOTIFICATIONS}, 3);
+        }
+        // Opções: MP3, 720p e 1080p (as que este vídeo tiver)
+        final List<String> labels = new ArrayList<>();
+        final List<Integer> kinds = new ArrayList<>();
+        if (DownloadOptions.bestAudio(info, false) != null) {
+            labels.add(getString(R.string.download_mp3));
+            kinds.add(DownloadService.MP3);
+        }
+        if (DownloadOptions.videoOnly(info, 720) != null
+                && DownloadOptions.bestAudio(info, true) != null) {
+            labels.add(getString(R.string.download_720));
+            kinds.add(DownloadService.HD_720);
+        }
+        if (DownloadOptions.videoOnly(info, 1080) != null
+                && DownloadOptions.bestAudio(info, true) != null) {
+            labels.add(getString(R.string.download_1080));
+            kinds.add(DownloadService.HD_1080);
+        }
+        if (!kinds.contains(DownloadService.HD_720) && !kinds.contains(DownloadService.HD_1080)
+                && DownloadOptions.muxed(info) != null) {
+            final VideoStream sd = DownloadOptions.muxed(info);
+            labels.add(getString(R.string.download_video) + " " + sd.getHeight() + "p");
+            kinds.add(DownloadService.SD);
+        }
+        if (kinds.isEmpty()) {
             Toast.makeText(this, R.string.no_download, Toast.LENGTH_LONG).show();
             return;
         }
-        final String[] labels = new String[options.size()];
-        for (int i = 0; i < labels.length; i++) {
-            labels[i] = options.get(i).label;
-        }
         new MaterialAlertDialogBuilder(this)
                 .setTitle(R.string.download)
-                .setItems(labels, (d, which) -> {
-                    try {
-                        Downloads.enqueue(this, info, options.get(which).stream);
-                        Toast.makeText(this, R.string.download_started, Toast.LENGTH_SHORT)
-                                .show();
-                    } catch (final Exception e) {
-                        Toast.makeText(this, Images.errorMessage(e), Toast.LENGTH_LONG).show();
-                    }
+                .setItems(labels.toArray(new String[0]), (d, which) -> {
+                    DownloadService.start(this, info, kinds.get(which));
+                    Toast.makeText(this, R.string.download_started, Toast.LENGTH_SHORT).show();
                 })
                 .show();
     }
