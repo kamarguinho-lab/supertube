@@ -23,23 +23,21 @@ jobs:
 
       - name: Certificado do app
         env:
-          KEYSTORE_B64: ${{ secrets.RELEASE_KEYSTORE_B64 }}
           KEYSTORE_PASS: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
         run: |
-          if [ -n "$KEYSTORE_B64" ]; then
-            # Tira espaços e quebras de linha que entram ao colar o texto
-            printf '%s' "$KEYSTORE_B64" | tr -d ' \n\r\t' > /tmp/ks.b64
-            echo "Tamanho do texto: $(wc -c < /tmp/ks.b64) (o certo é 5824)"
-            base64 -d -i /tmp/ks.b64 > app/release.jks
-            keytool -list -keystore app/release.jks -storepass "$KEYSTORE_PASS" | grep -i "supertube" \
-              && echo "Usando o certificado próprio"
+          # O certificado fica no repositório criptografado; só a senha (Secret) abre
+          if [ -n "$KEYSTORE_PASS" ] && printf '%s' "$KEYSTORE_PASS" | tr -d ' \n\r\t' > /tmp/pass \
+             && openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in app/release.jks.enc \
+                -out app/release.jks -pass file:/tmp/pass \
+             && keytool -list -keystore app/release.jks -storepass "$(cat /tmp/pass)" | grep -qi supertube; then
+            echo "RELEASE_KEYSTORE_PASSWORD=$(cat /tmp/pass)" >> "$GITHUB_ENV"
+            echo "Usando o certificado próprio (Fernando Camargo)"
           else
-            echo "Sem certificado próprio: usando o antigo"
+            rm -f app/release.jks
+            echo "::warning::Senha do certificado ausente ou errada: usando o certificado antigo"
           fi
 
       - name: Compilar APK
-        env:
-          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon assemblePhoneRelease assembleTvRelease
