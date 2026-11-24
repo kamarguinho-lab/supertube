@@ -24,13 +24,13 @@ jobs:
       - name: Compilar APK
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon assemblePhoneDebug assembleTvDebug
+          ./gradlew --no-daemon assemblePhoneRelease assembleTvRelease
 
       - name: Renomear APKs (com a versão no nome)
         run: |
           V="1.0.${{ github.run_number }}"
-          cp app/build/outputs/apk/phone/debug/app-phone-debug.apk "SuperTube-$V.apk"
-          cp app/build/outputs/apk/tv/debug/app-tv-debug.apk "SuperTube-TV-$V.apk"
+          cp app/build/outputs/apk/phone/release/app-phone-release.apk "SuperTube-$V.apk"
+          cp app/build/outputs/apk/tv/release/app-tv-release.apk "SuperTube-TV-$V.apk"
           # Nomes antigos: o botão Atualizar das versões já instaladas procura por eles
           cp "SuperTube-$V.apk" SuperTube.apk
           cp "SuperTube-TV-$V.apk" SuperTube-TV.apk

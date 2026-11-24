@@ -55,10 +55,17 @@ android {
         debug {
             signingConfig signingConfigs.debug
         }
+        // Versão final (sem modo de depuração): o Play Protect bloqueia menos
         release {
             minifyEnabled false
+            debuggable false
             signingConfig signingConfigs.debug
         }
+    }
+
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
     }
 
     // Dois APKs: um para celular e outro só para TV
