@@ -24,10 +24,15 @@ jobs:
       - name: Certificado do app
         env:
           KEYSTORE_B64: ${{ secrets.RELEASE_KEYSTORE_B64 }}
+          KEYSTORE_PASS: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
         run: |
           if [ -n "$KEYSTORE_B64" ]; then
-            echo "$KEYSTORE_B64" | base64 -d > app/release.jks
-            echo "Usando o certificado próprio"
+            # Tira espaços e quebras de linha que entram ao colar o texto
+            printf '%s' "$KEYSTORE_B64" | tr -d ' \n\r\t' > /tmp/ks.b64
+            echo "Tamanho do texto: $(wc -c < /tmp/ks.b64) (o certo é 5824)"
+            base64 -d -i /tmp/ks.b64 > app/release.jks
+            keytool -list -keystore app/release.jks -storepass "$KEYSTORE_PASS" | grep -i "supertube" \
+              && echo "Usando o certificado próprio"
           else
             echo "Sem certificado próprio: usando o antigo"
           fi
