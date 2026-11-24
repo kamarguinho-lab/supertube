@@ -62,6 +62,9 @@ public class PlayerService extends Service {
                     .setHandleAudioBecomingNoisy(true)
                     .setWakeMode(C.WAKE_MODE_NETWORK)
                     .build();
+            // Em 30% da música já carrega a próxima (também com a tela bloqueada)
+            Preloader.watch(player, com.kamarguinho.supertube.ui.PlaybackNav::currentInfo,
+                    () -> true);
         }
         return player;
     }

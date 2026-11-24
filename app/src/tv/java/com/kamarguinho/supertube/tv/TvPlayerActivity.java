@@ -119,6 +119,8 @@ public class TvPlayerActivity extends AppCompatActivity {
                         .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
                         .build(), true)
                 .build();
+        com.kamarguinho.supertube.player.Preloader.watch(player, () -> current,
+                () -> !isDestroyed());
         player.addListener(new Player.Listener() {
             @Override
             public void onPlaybackStateChanged(final int state) {
@@ -189,7 +191,7 @@ public class TvPlayerActivity extends AppCompatActivity {
         subView.setText("");
         player.stop();
         Bg.run(() -> {
-            final StreamInfo info = StreamInfo.getInfo(NewPipe.getServiceByUrl(url), url);
+            final StreamInfo info = com.kamarguinho.supertube.player.Preloader.get(url);
             final Subtitles.Option sub = Subtitles.pick(info,
                     Subtitles.mode(TvPlayerActivity.this));
             return new Object[]{info, resolver.resolve(info, targetHeight(), false, sub), sub};

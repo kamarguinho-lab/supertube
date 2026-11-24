@@ -291,7 +291,7 @@ public class PlayerActivity extends AppCompatActivity {
         final MediaResolver r = new MediaResolver(c);
         r.audioLanguage = AudioTracks.preferred(c);
         Bg.run(() -> {
-            final StreamInfo info = StreamInfo.getInfo(NewPipe.getServiceByUrl(url), url);
+            final StreamInfo info = com.kamarguinho.supertube.player.Preloader.get(url);
             final Subtitles.Option sub = Subtitles.pick(info, Subtitles.mode(c));
             final MediaSource src = r.resolve(info,
                     Quality.maxHeight(c, Quality.mode(c), false), audioOnly, sub);
@@ -347,8 +347,7 @@ public class PlayerActivity extends AppCompatActivity {
         player.stop();
 
         Bg.run(() -> {
-            final StreamingService service = NewPipe.getServiceByUrl(url);
-            final StreamInfo info = StreamInfo.getInfo(service, url);
+            final StreamInfo info = com.kamarguinho.supertube.player.Preloader.get(url);
             final Subtitles.Option sub = Subtitles.pick(info,
                     Subtitles.mode(PlayerActivity.this));
             final MediaSource source = resolver.resolve(info, targetHeight(), audioOnly, sub);
