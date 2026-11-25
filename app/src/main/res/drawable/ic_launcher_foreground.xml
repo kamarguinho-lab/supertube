@@ -1,6 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ícone próprio do SuperTube: um "S" com uma estrela -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp" android:height="108dp"
     android:viewportWidth="108" android:viewportHeight="108">
-    <path android:fillColor="#FFFFFF"
-        android:pathData="M45,36 L45,72 L75,54 Z" />
+    <path android:pathData="M66,42 C62,36 46,35 44,45 C42,54 66,52 64,63 C62,73 45,73 41,66"
+        android:strokeColor="#FFFFFF" android:strokeWidth="9"
+        android:strokeLineCap="round" android:fillColor="#00000000" />
+    <path android:fillColor="#FFE066"
+        android:pathData="M75,30 L77,35 L82,37 L77,39 L75,44 L73,39 L68,37 L73,35 Z" />
 </vector>
